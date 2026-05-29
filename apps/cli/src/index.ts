@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { STUDY_TUTOR_CORE_VERSION } from "@study-tutor/core";
 import { runInstallCommand } from "./commands/install.js";
+import { runNextCommand } from "./commands/next.js";
 import { runStatusCommand } from "./commands/status.js";
 import { runTestCommand } from "./commands/test.js";
 
@@ -27,6 +28,11 @@ program
   .command("test")
   .description("Run learner tests and public sanity tests")
   .action(() => runTestCommand());
+
+program
+  .command("next")
+  .description("Run completion checks and create the next step")
+  .action(() => runNextCommand());
 
 program.parseAsync(process.argv).catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);

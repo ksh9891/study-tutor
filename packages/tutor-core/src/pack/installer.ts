@@ -51,13 +51,18 @@ async function installStepArtifacts(pack: LoadedTutorPack, projectRoot: string, 
 
   await mkdir(stepTarget, { recursive: true });
   try {
+    await mkdir(publicTestsTarget, { recursive: true });
     await copyDirectoryWithoutOverwrite(step.root, stepTarget);
     await copyDirectoryWithoutOverwrite(join(step.root, "public-tests"), publicTestsTarget);
   } catch (error) {
-    await Promise.all([
+    const cleanupResults = await Promise.allSettled([
       removeCreatedTarget(publicTestsTarget, publicTestsTargetExisted),
       removeCreatedTarget(stepTarget, stepTargetExisted)
     ]);
+    const cleanupFailure = cleanupResults.find((result) => result.status === "rejected");
+    if (cleanupFailure?.status === "rejected") {
+      throw cleanupFailure.reason;
+    }
     throw error;
   }
 }

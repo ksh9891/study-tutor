@@ -154,4 +154,18 @@ describe("installStepArtifacts", () => {
     await expect(exists(stepRequirements)).resolves.toBe(true);
     await expect(exists(publicTestConflict)).resolves.toBe(true);
   });
+
+  it("rolls back the step directory when public test target creation fails", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "study-tutor-step-mkdir-rollback-"));
+    const pack = await loadTutorPack(bundledPackRoot());
+    const projectRoot = join(workspace, "mini-jpa-study");
+    const stepId = "step-02-entity-metadata";
+    const stepTarget = join(projectRoot, ".tutor", "steps", stepId);
+
+    await mkdir(join(projectRoot, "src", "test", "java"), { recursive: true });
+    await writeFile(join(projectRoot, "src", "test", "java", "publictests"), "not a directory");
+
+    await expect(installStepArtifacts(pack, projectRoot, stepId)).rejects.toThrow();
+    await expect(exists(stepTarget)).resolves.toBe(false);
+  });
 });
