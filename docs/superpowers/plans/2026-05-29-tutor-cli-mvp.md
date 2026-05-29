@@ -758,6 +758,12 @@ Run:
 chmod +x packs/jpa-tutor-pack/templates/gradle-project/gradlew
 ```
 
+If the Gradle distribution zip is available locally, verify its SHA-256 and add this line to `gradle/wrapper/gradle-wrapper.properties`:
+
+```properties
+distributionSha256Sum=a4b4158601f8636cdeeab09bd76afb640030bb5b144aafe261a5e8af027dc612
+```
+
 - [ ] **Step 4: Create step 01 files**
 
 `packs/jpa-tutor-pack/steps/step-01-entity-annotations/step.yaml`:
@@ -780,12 +786,15 @@ Mini JPA의 출발점이 되는 runtime annotation을 직접 만든다.
 ## 요구사항
 
 - `io.tutor.minijpa.Entity`는 클래스에 붙일 수 있어야 한다.
-- `Entity`는 runtime reflection으로 읽을 수 있어야 한다.
+- `Entity`는 `RetentionPolicy.RUNTIME`으로 선언되어 runtime reflection으로 읽을 수 있어야 한다.
 - `io.tutor.minijpa.Table`은 클래스에 붙일 수 있어야 한다.
 - `Table`은 `String name()` 속성을 가져야 한다.
+- `Table`은 `RetentionPolicy.RUNTIME`으로 선언되어 runtime reflection으로 읽을 수 있어야 한다.
 - `io.tutor.minijpa.Id`는 필드에 붙일 수 있어야 한다.
+- `Id`는 `RetentionPolicy.RUNTIME`으로 선언되어 runtime reflection으로 읽을 수 있어야 한다.
 - `io.tutor.minijpa.Column`은 필드에 붙일 수 있어야 한다.
 - `Column`은 `String name()` 속성을 가져야 한다.
+- `Column`은 `RetentionPolicy.RUNTIME`으로 선언되어 runtime reflection으로 읽을 수 있어야 한다.
 
 ## 구현 위치
 
@@ -867,7 +876,39 @@ class EntityAnnotationSanityTest {
 }
 ```
 
-`packs/jpa-tutor-pack/steps/step-01-entity-annotations/tck-tests/tutortck/step01/EntityAnnotationPolicyTckTest.java`:
+`packs/jpa-tutor-pack/steps/step-01-entity-annotations/tck-tests/tutortck/step01/EntityAnnotationTargetPolicyTckTest.java`:
+
+```java
+package tutortck.step01;
+
+import io.tutor.minijpa.Column;
+import io.tutor.minijpa.Entity;
+import io.tutor.minijpa.Id;
+import io.tutor.minijpa.Table;
+import org.junit.jupiter.api.Test;
+
+import java.lang.annotation.Target;
+
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.TYPE;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class EntityAnnotationTargetPolicyTckTest {
+    @Test
+    void entityAndTableMustTargetTypes() {
+        assertThat(Entity.class.getAnnotation(Target.class).value()).containsExactly(TYPE);
+        assertThat(Table.class.getAnnotation(Target.class).value()).containsExactly(TYPE);
+    }
+
+    @Test
+    void idAndColumnMustTargetFields() {
+        assertThat(Id.class.getAnnotation(Target.class).value()).containsExactly(FIELD);
+        assertThat(Column.class.getAnnotation(Target.class).value()).containsExactly(FIELD);
+    }
+}
+```
+
+`packs/jpa-tutor-pack/steps/step-01-entity-annotations/tck-tests/tutortck/step01/EntityAnnotationRuntimeRetentionTckTest.java`:
 
 ```java
 package tutortck.step01;
@@ -880,25 +921,10 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class EntityAnnotationPolicyTckTest {
-    @Test
-    void entityAndTableMustTargetTypes() {
-        assertThat(Entity.class.getAnnotation(Target.class).value()).containsExactly(TYPE);
-        assertThat(Table.class.getAnnotation(Target.class).value()).containsExactly(TYPE);
-    }
-
-    @Test
-    void idAndColumnMustTargetFields() {
-        assertThat(Id.class.getAnnotation(Target.class).value()).containsExactly(FIELD);
-        assertThat(Column.class.getAnnotation(Target.class).value()).containsExactly(FIELD);
-    }
-
+class EntityAnnotationRuntimeRetentionTckTest {
     @Test
     void allAnnotationsMustUseRuntimeRetention() {
         assertThat(Entity.class.getAnnotation(Retention.class).value()).isEqualTo(RetentionPolicy.RUNTIME);
@@ -914,12 +940,12 @@ class EntityAnnotationPolicyTckTest {
 ```yaml
 edgeCases:
   annotation-target-policy:
-    testClass: tutortck.step01.EntityAnnotationPolicyTckTest
+    testClass: tutortck.step01.EntityAnnotationTargetPolicyTckTest
     title: Annotation target 정책
     whyImportant: Entity와 Table은 클래스 메타데이터이고 Id와 Column은 필드 메타데이터입니다. target이 섞이면 ORM metadata extractor가 잘못된 위치에서 annotation을 읽게 됩니다.
     hint: Entity와 Table에는 ElementType.TYPE, Id와 Column에는 ElementType.FIELD를 사용하세요.
   annotation-runtime-retention:
-    testClass: tutortck.step01.EntityAnnotationPolicyTckTest
+    testClass: tutortck.step01.EntityAnnotationRuntimeRetentionTckTest
     title: Runtime retention 정책
     whyImportant: ORM은 reflection으로 annotation을 읽습니다. RUNTIME retention이 아니면 실행 중 metadata를 만들 수 없습니다.
     hint: 네 annotation 모두 RetentionPolicy.RUNTIME을 사용하세요.
@@ -959,6 +985,14 @@ Step 01에서 만든 annotation을 runtime reflection으로 읽어 ORM metadata�
 - `src/main/java/io/tutor/minijpa/EntityMetadata.java`
 - `src/main/java/io/tutor/minijpa/ColumnMetadata.java`
 - `src/main/java/io/tutor/minijpa/EntityMetadataExtractor.java`
+
+## Edge-case TCK
+
+`study-tutor next`는 public sanity test 이후 다음 mapping 오류도 확인한다.
+
+- `@Entity`가 없는 클래스는 거부해야 한다.
+- `@Id`가 없는 entity는 거부해야 한다.
+- `@Id`가 2개 이상인 entity는 거부해야 한다.
 ```
 
 `packs/jpa-tutor-pack/steps/step-02-entity-metadata/test-guide.md`:
@@ -1026,7 +1060,65 @@ class EntityMetadataSanityTest {
 }
 ```
 
-`packs/jpa-tutor-pack/steps/step-02-entity-metadata/tck-tests/tutortck/step02/EntityMetadataEdgeCaseTckTest.java`:
+`packs/jpa-tutor-pack/steps/step-02-entity-metadata/tck-tests/tutortck/step02/MissingEntityAnnotationTckTest.java`:
+
+```java
+package tutortck.step02;
+
+import io.tutor.minijpa.Column;
+import io.tutor.minijpa.EntityMetadataExtractor;
+import io.tutor.minijpa.Id;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class MissingEntityAnnotationTckTest {
+    static class NotEntity {
+        @Id
+        @Column(name = "id")
+        private Long id;
+    }
+
+    @Test
+    void rejectsClassWithoutEntityAnnotation() {
+        assertThatThrownBy(() -> new EntityMetadataExtractor().extract(NotEntity.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("@Entity");
+    }
+}
+```
+
+`packs/jpa-tutor-pack/steps/step-02-entity-metadata/tck-tests/tutortck/step02/MissingIdFieldTckTest.java`:
+
+```java
+package tutortck.step02;
+
+import io.tutor.minijpa.Column;
+import io.tutor.minijpa.Entity;
+import io.tutor.minijpa.EntityMetadataExtractor;
+import io.tutor.minijpa.Table;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class MissingIdFieldTckTest {
+    @Entity
+    @Table(name = "no_id_members")
+    static class EntityWithoutId {
+        @Column(name = "name")
+        private String name;
+    }
+
+    @Test
+    void rejectsEntityWithoutId() {
+        assertThatThrownBy(() -> new EntityMetadataExtractor().extract(EntityWithoutId.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("@Id");
+    }
+}
+```
+
+`packs/jpa-tutor-pack/steps/step-02-entity-metadata/tck-tests/tutortck/step02/DuplicateIdFieldsTckTest.java`:
 
 ```java
 package tutortck.step02;
@@ -1040,20 +1132,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class EntityMetadataEdgeCaseTckTest {
-    static class NotEntity {
-        @Id
-        @Column(name = "id")
-        private Long id;
-    }
-
-    @Entity
-    @Table(name = "no_id_members")
-    static class EntityWithoutId {
-        @Column(name = "name")
-        private String name;
-    }
-
+class DuplicateIdFieldsTckTest {
     @Entity
     @Table(name = "duplicate_id_members")
     static class EntityWithDuplicateIds {
@@ -1064,20 +1143,6 @@ class EntityMetadataEdgeCaseTckTest {
         @Id
         @Column(name = "legacy_id")
         private Long legacyId;
-    }
-
-    @Test
-    void rejectsClassWithoutEntityAnnotation() {
-        assertThatThrownBy(() -> new EntityMetadataExtractor().extract(NotEntity.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("@Entity");
-    }
-
-    @Test
-    void rejectsEntityWithoutId() {
-        assertThatThrownBy(() -> new EntityMetadataExtractor().extract(EntityWithoutId.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("@Id");
     }
 
     @Test
@@ -1094,17 +1159,17 @@ class EntityMetadataEdgeCaseTckTest {
 ```yaml
 edgeCases:
   missing-entity-annotation:
-    testClass: tutortck.step02.EntityMetadataEdgeCaseTckTest
+    testClass: tutortck.step02.MissingEntityAnnotationTckTest
     title: "@Entity가 없는 클래스"
     whyImportant: ORM은 모든 Java class를 entity로 보지 않습니다. @Entity가 없는 class를 허용하면 metadata extractor가 관리 대상이 아닌 객체까지 persistence 대상으로 착각합니다.
     hint: EntityMetadataExtractor 시작 부분에서 entityClass.isAnnotationPresent(Entity.class)를 검사하세요.
   missing-id-field:
-    testClass: tutortck.step02.EntityMetadataEdgeCaseTckTest
+    testClass: tutortck.step02.MissingIdFieldTckTest
     title: "@Id가 없는 Entity"
     whyImportant: identifier가 없으면 EntityKey, 1차 캐시, dirty checking 기준을 만들 수 없습니다.
     hint: 필드를 순회하면서 @Id 개수를 세고 0개면 IllegalArgumentException을 던지세요.
   duplicate-id-fields:
-    testClass: tutortck.step02.EntityMetadataEdgeCaseTckTest
+    testClass: tutortck.step02.DuplicateIdFieldsTckTest
     title: "@Id가 2개 이상인 Entity"
     whyImportant: identifier가 여러 개면 findById SQL과 persistence identity가 모호해집니다.
     hint: MVP에서는 composite key를 지원하지 않으므로 @Id가 정확히 1개일 때만 허용하세요.

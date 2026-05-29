@@ -9,20 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class EntityMetadataEdgeCaseTckTest {
-    static class NotEntity {
-        @Id
-        @Column(name = "id")
-        private Long id;
-    }
-
-    @Entity
-    @Table(name = "no_id_members")
-    static class EntityWithoutId {
-        @Column(name = "name")
-        private String name;
-    }
-
+class DuplicateIdFieldsTckTest {
     @Entity
     @Table(name = "duplicate_id_members")
     static class EntityWithDuplicateIds {
@@ -33,20 +20,6 @@ class EntityMetadataEdgeCaseTckTest {
         @Id
         @Column(name = "legacy_id")
         private Long legacyId;
-    }
-
-    @Test
-    void rejectsClassWithoutEntityAnnotation() {
-        assertThatThrownBy(() -> new EntityMetadataExtractor().extract(NotEntity.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("@Entity");
-    }
-
-    @Test
-    void rejectsEntityWithoutId() {
-        assertThatThrownBy(() -> new EntityMetadataExtractor().extract(EntityWithoutId.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("@Id");
     }
 
     @Test

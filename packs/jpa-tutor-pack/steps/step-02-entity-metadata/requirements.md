@@ -19,3 +19,11 @@ Step 01에서 만든 annotation을 runtime reflection으로 읽어 ORM metadata�
 - `src/main/java/io/tutor/minijpa/EntityMetadata.java`
 - `src/main/java/io/tutor/minijpa/ColumnMetadata.java`
 - `src/main/java/io/tutor/minijpa/EntityMetadataExtractor.java`
+
+## Edge-case TCK
+
+`study-tutor next`는 public sanity test 이후 다음 mapping 오류도 확인한다.
+
+- `@Entity`가 없는 클래스는 거부해야 한다.
+- `@Id`가 없는 entity는 거부해야 한다.
+- `@Id`가 2개 이상인 entity는 거부해야 한다.

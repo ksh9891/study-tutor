@@ -1,16 +1,16 @@
 edgeCases:
   missing-entity-annotation:
-    testClass: tutortck.step02.EntityMetadataEdgeCaseTckTest
+    testClass: tutortck.step02.MissingEntityAnnotationTckTest
     title: "@Entity가 없는 클래스"
     whyImportant: ORM은 모든 Java class를 entity로 보지 않습니다. @Entity가 없는 class를 허용하면 metadata extractor가 관리 대상이 아닌 객체까지 persistence 대상으로 착각합니다.
     hint: EntityMetadataExtractor 시작 부분에서 entityClass.isAnnotationPresent(Entity.class)를 검사하세요.
   missing-id-field:
-    testClass: tutortck.step02.EntityMetadataEdgeCaseTckTest
+    testClass: tutortck.step02.MissingIdFieldTckTest
     title: "@Id가 없는 Entity"
     whyImportant: identifier가 없으면 EntityKey, 1차 캐시, dirty checking 기준을 만들 수 없습니다.
     hint: 필드를 순회하면서 @Id 개수를 세고 0개면 IllegalArgumentException을 던지세요.
   duplicate-id-fields:
-    testClass: tutortck.step02.EntityMetadataEdgeCaseTckTest
+    testClass: tutortck.step02.DuplicateIdFieldsTckTest
     title: "@Id가 2개 이상인 Entity"
     whyImportant: identifier가 여러 개면 findById SQL과 persistence identity가 모호해집니다.
     hint: MVP에서는 composite key를 지원하지 않으므로 @Id가 정확히 1개일 때만 허용하세요.

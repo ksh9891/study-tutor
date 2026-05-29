@@ -1,11 +1,11 @@
 edgeCases:
   annotation-target-policy:
-    testClass: tutortck.step01.EntityAnnotationPolicyTckTest
+    testClass: tutortck.step01.EntityAnnotationTargetPolicyTckTest
     title: Annotation target 정책
     whyImportant: Entity와 Table은 클래스 메타데이터이고 Id와 Column은 필드 메타데이터입니다. target이 섞이면 ORM metadata extractor가 잘못된 위치에서 annotation을 읽게 됩니다.
     hint: Entity와 Table에는 ElementType.TYPE, Id와 Column에는 ElementType.FIELD를 사용하세요.
   annotation-runtime-retention:
-    testClass: tutortck.step01.EntityAnnotationPolicyTckTest
+    testClass: tutortck.step01.EntityAnnotationRuntimeRetentionTckTest
     title: Runtime retention 정책
     whyImportant: ORM은 reflection으로 annotation을 읽습니다. RUNTIME retention이 아니면 실행 중 metadata를 만들 수 없습니다.
     hint: 네 annotation 모두 RetentionPolicy.RUNTIME을 사용하세요.

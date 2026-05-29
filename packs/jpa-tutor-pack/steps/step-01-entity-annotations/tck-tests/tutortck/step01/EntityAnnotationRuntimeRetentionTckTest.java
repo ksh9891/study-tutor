@@ -8,25 +8,10 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class EntityAnnotationPolicyTckTest {
-    @Test
-    void entityAndTableMustTargetTypes() {
-        assertThat(Entity.class.getAnnotation(Target.class).value()).containsExactly(TYPE);
-        assertThat(Table.class.getAnnotation(Target.class).value()).containsExactly(TYPE);
-    }
-
-    @Test
-    void idAndColumnMustTargetFields() {
-        assertThat(Id.class.getAnnotation(Target.class).value()).containsExactly(FIELD);
-        assertThat(Column.class.getAnnotation(Target.class).value()).containsExactly(FIELD);
-    }
-
+class EntityAnnotationRuntimeRetentionTckTest {
     @Test
     void allAnnotationsMustUseRuntimeRetention() {
         assertThat(Entity.class.getAnnotation(Retention.class).value()).isEqualTo(RetentionPolicy.RUNTIME);
