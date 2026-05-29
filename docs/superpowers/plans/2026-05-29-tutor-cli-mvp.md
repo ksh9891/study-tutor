@@ -49,6 +49,7 @@ Each core file has one responsibility:
 ## Task 1: Bootstrap Workspace
 
 **Files:**
+- Create: `.gitignore`
 - Create: `package.json`
 - Create: `pnpm-workspace.yaml`
 - Create: `tsconfig.base.json`
@@ -65,6 +66,16 @@ Each core file has one responsibility:
 
 Use these exact contents.
 
+`.gitignore`:
+
+```gitignore
+node_modules/
+dist/
+.turbo/
+.DS_Store
+coverage/
+```
+
 `package.json`:
 
 ```json
@@ -75,10 +86,10 @@ Use these exact contents.
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "vitest run",
+    "typecheck": "pnpm build && pnpm -r typecheck",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "cli": "pnpm --filter @study-tutor/cli dev --"
+    "cli": "pnpm --filter @study-tutor/cli dev"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
@@ -164,7 +175,7 @@ export default defineWorkspace([
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "execa": "^9.5.2",
@@ -205,10 +216,10 @@ export default defineWorkspace([
     "study-tutor": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "build": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json",
+    "dev": "pnpm --filter @study-tutor/core build && tsx src/index.ts",
+    "typecheck": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.2.1",
@@ -286,15 +297,15 @@ pnpm build
 ... apps/cli build succeeds
 
 pnpm test
-No test files found
+No test files found, exiting with code 0
 ```
 
-Vitest exits with code 1 when no tests exist in some configurations. If that happens before Task 2 tests exist, run only `pnpm build` and proceed to Task 2 before using `pnpm test` as a gate.
+Root Vitest uses `--passWithNoTests` so Task 1 can use `pnpm test` as a bootstrap verification gate before Task 2 adds tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add package.json pnpm-workspace.yaml tsconfig.base.json tsconfig.json vitest.workspace.ts apps packages
+git add .gitignore package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json vitest.workspace.ts apps packages
 git commit -m "chore: bootstrap pnpm workspace"
 ```
 

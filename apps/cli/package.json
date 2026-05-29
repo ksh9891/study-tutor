@@ -1,0 +1,22 @@
+{
+  "name": "@study-tutor/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "study-tutor": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json",
+    "dev": "pnpm --filter @study-tutor/core build && tsx src/index.ts",
+    "typecheck": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.2.1",
+    "@study-tutor/core": "workspace:*",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}
