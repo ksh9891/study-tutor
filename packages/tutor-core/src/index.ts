@@ -5,7 +5,9 @@ export { installTutorProject } from "./pack/installer.js";
 export { loadTutorPack } from "./pack/loader.js";
 export { readProgress, writePackLock, writeProgress } from "./progress/progress-store.js";
 export { runGradleTest } from "./test/gradle-runner.js";
+export { runCurrentStepTck } from "./test/tck-runner.js";
 export type { GradleRunOptions, GradleRunResult } from "./test/gradle-runner.js";
+export type { TckRunInput, TckRunResult } from "./test/tck-runner.js";
 export type { InstallTutorProjectInput } from "./pack/installer.js";
 export type {
   Course,
