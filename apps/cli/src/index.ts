@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { STUDY_TUTOR_CORE_VERSION } from "@study-tutor/core";
 import { runInstallCommand } from "./commands/install.js";
 import { runStatusCommand } from "./commands/status.js";
+import { runTestCommand } from "./commands/test.js";
 
 const program = new Command();
 
@@ -21,6 +22,11 @@ program
   .command("status")
   .description("Show current study progress and next actions")
   .action(() => runStatusCommand());
+
+program
+  .command("test")
+  .description("Run learner tests and public sanity tests")
+  .action(() => runTestCommand());
 
 program.parseAsync(process.argv).catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
