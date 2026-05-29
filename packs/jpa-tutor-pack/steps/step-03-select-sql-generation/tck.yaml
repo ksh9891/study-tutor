@@ -1,0 +1,6 @@
+edgeCases:
+  id-column-not-first:
+    testClass: tutortck.step03.SelectSqlGeneratorEdgeCaseTckTest
+    title: "@Id 필드가 첫 번째 필드가 아닌 Entity"
+    whyImportant: ORM은 Java field 선언 순서에 identifier 위치를 의존하면 안 됩니다. WHERE 절은 metadata가 식별한 id column을 사용해야 합니다.
+    hint: metadata.columns().get(0)가 아니라 metadata.idColumn().columnName()으로 WHERE 절을 만드세요.

@@ -1,0 +1,8 @@
+id: jpa-tutor-pack
+name: JPA Tutor Pack
+version: 0.1.0
+language: java
+runtime:
+  java: "21"
+  buildTool: gradle
+initialStep: step-01-entity-annotations

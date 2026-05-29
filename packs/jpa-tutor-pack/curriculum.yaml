@@ -1,0 +1,17 @@
+courses:
+  - id: mini-hibernate
+    title: Mini Hibernate로 배우는 JPA
+    status: active
+    steps:
+      - step-01-entity-annotations
+      - step-02-entity-metadata
+      - step-03-select-sql-generation
+  - id: jpa-concepts-practice
+    title: JPA 개념 중심 실습
+    status: coming-soon
+  - id: spring-data-jpa-practice
+    title: Spring Data JPA 실무 패턴
+    status: coming-soon
+  - id: jpa-interview-focus
+    title: 면접 대비 집중 코스
+    status: coming-soon

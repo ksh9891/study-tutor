@@ -1,8 +1,13 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { loadTutorPack } from "../pack/loader.js";
+
+function repositoryRootFromTestFile() {
+  return resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+}
 
 interface StepFixture {
   directory?: string;
@@ -153,5 +158,17 @@ describe("loadTutorPack", () => {
       message: expect.stringContaining("Invalid"),
       details: expect.arrayContaining([expect.stringContaining("courses.0.steps.0")])
     });
+  });
+
+  it("loads the bundled JPA tutor pack", async () => {
+    const pack = await loadTutorPack(join(repositoryRootFromTestFile(), "packs", "jpa-tutor-pack"));
+
+    expect(pack.metadata.id).toBe("jpa-tutor-pack");
+    expect(pack.steps.map((step) => step.id)).toEqual([
+      "step-01-entity-annotations",
+      "step-02-entity-metadata",
+      "step-03-select-sql-generation"
+    ]);
+    expect(pack.stepById.get("step-01-entity-annotations")?.tck.edgeCases.length).toBeGreaterThan(0);
   });
 });
