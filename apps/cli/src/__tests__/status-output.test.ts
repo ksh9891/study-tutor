@@ -17,6 +17,9 @@ describe("formatStatus", () => {
     expect(output).toContain("Current Step: 01 - Entity Annotation 만들기");
     expect(output).toContain(".tutor/steps/step-01-entity-annotations/requirements.md");
     expect(output).toContain("src/test/java/learner");
-    expect(output).toContain("study-tutor next");
+    expect(output).toContain("현재 사용 중인 CLI 실행 방식으로 test를 실행하세요.");
+    expect(output).toContain("현재 사용 중인 CLI 실행 방식으로 next를 실행하세요.");
+    expect(output).not.toContain("study-tutor test");
+    expect(output).not.toContain("study-tutor next");
   });
 });

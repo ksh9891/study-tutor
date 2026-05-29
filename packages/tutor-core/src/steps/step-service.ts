@@ -27,7 +27,7 @@ async function assertLearnerTestExists(projectRoot: string): Promise<void> {
     onlyFiles: true
   });
   if (files.length === 0) {
-    throw new StudyTutorError("Write at least one learner test before running study-tutor next.", [
+    throw new StudyTutorError("Write at least one learner test before running next with your current CLI invocation.", [
       "Expected at least one file matching src/test/java/learner/**/*Test.java"
     ]);
   }

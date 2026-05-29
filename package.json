@@ -8,7 +8,7 @@
     "typecheck": "pnpm build && pnpm -r typecheck",
     "test": "pnpm build && vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "cli": "pnpm --filter @study-tutor/cli dev"
+    "cli": "pnpm --filter @study-tutor/core build && tsx apps/cli/src/index.ts"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",

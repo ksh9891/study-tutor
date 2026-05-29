@@ -25,8 +25,8 @@ export function formatStatus(view: StatusView): string {
     "Next action:",
     `- .tutor/steps/${view.currentStepId}/requirements.md를 읽으세요.`,
     "- src/test/java/learner 아래에 직접 테스트를 작성하세요.",
-    "- 구현 후 study-tutor test를 실행하세요.",
-    "- 준비되면 study-tutor next를 실행하세요."
+    "- 구현 후 현재 사용 중인 CLI 실행 방식으로 test를 실행하세요.",
+    "- 준비되면 현재 사용 중인 CLI 실행 방식으로 next를 실행하세요."
   ].join("\n");
 }
 

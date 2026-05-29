@@ -23,6 +23,24 @@ export function validateInstallDirectoryName(value: string): true | string {
   return true;
 }
 
+export interface InstallSuccessView {
+  directoryName: string;
+  projectRoot: string;
+}
+
+export function formatInstallSuccess(view: InstallSuccessView): string {
+  return [
+    "",
+    "학습 프로젝트가 생성되었습니다.",
+    `경로: ${view.projectRoot}`,
+    "현재 Step: 01 - Entity Annotation 만들기",
+    "",
+    "다음 명령:",
+    `  cd ${view.directoryName}`,
+    "  현재 사용 중인 CLI 실행 방식으로 status를 실행하세요."
+  ].join("\n");
+}
+
 export async function runInstallCommand(packId: string): Promise<void> {
   if (packId !== "jpa-tutor-pack") {
     throw new Error(`Unsupported pack: ${packId}`);
@@ -55,12 +73,5 @@ export async function runInstallCommand(packId: string): Promise<void> {
     source: "bundled:packs/jpa-tutor-pack"
   });
 
-  console.log("");
-  console.log("학습 프로젝트가 생성되었습니다.");
-  console.log(`경로: ${projectRoot}`);
-  console.log("현재 Step: 01 - Entity Annotation 만들기");
-  console.log("");
-  console.log("다음 명령:");
-  console.log(`  cd ${directoryName}`);
-  console.log("  study-tutor status");
+  console.log(formatInstallSuccess({ directoryName, projectRoot }));
 }

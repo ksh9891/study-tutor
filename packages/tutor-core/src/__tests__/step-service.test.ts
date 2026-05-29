@@ -38,12 +38,21 @@ describe("advanceToNextStep", () => {
     const projectRoot = await createProjectAtStep();
     const pack = await loadTutorPack(join(repositoryRootFromTestFile(), "packs", "jpa-tutor-pack"));
 
-    await expect(advanceToNextStep({
-      projectRoot,
-      pack,
-      runGradle: async () => ({ ok: true, output: "BUILD SUCCESSFUL" }),
-      runTck: async () => ({ ok: true, output: "BUILD SUCCESSFUL", failedEdgeCases: [] })
-    })).rejects.toThrow("Write at least one learner test");
+    let thrown: unknown;
+    try {
+      await advanceToNextStep({
+        projectRoot,
+        pack,
+        runGradle: async () => ({ ok: true, output: "BUILD SUCCESSFUL" }),
+        runTck: async () => ({ ok: true, output: "BUILD SUCCESSFUL", failedEdgeCases: [] })
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe("Write at least one learner test before running next with your current CLI invocation.");
+    expect((thrown as Error).message).not.toContain("study-tutor next");
   });
 
   it("runs tests and TCK, installs next step, and updates progress", async () => {
