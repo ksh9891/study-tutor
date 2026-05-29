@@ -4,12 +4,14 @@ import YAML from "yaml";
 import { StudyTutorError } from "../errors.js";
 import {
   CurriculumSchema,
-  LoadedStep,
-  LoadedTutorPack,
   PackSchema,
   StepSchema,
-  TckEdgeCase,
   TckSchema
+} from "./schema.js";
+import type {
+  LoadedStep,
+  LoadedTutorPack,
+  TckEdgeCase
 } from "./schema.js";
 
 async function readYamlFile(path: string): Promise<unknown> {
@@ -36,6 +38,10 @@ async function parseYamlWithSchema<T>(file: string, schema: { parse: (value: unk
 async function loadStep(packRoot: string, stepId: string): Promise<LoadedStep> {
   const stepRoot = join(packRoot, "steps", stepId);
   const step = await parseYamlWithSchema(join(stepRoot, "step.yaml"), StepSchema);
+  if (step.id !== stepId) {
+    throw new StudyTutorError(`Step file id ${step.id} does not match curriculum step id ${stepId}`);
+  }
+
   const tckFile = await parseYamlWithSchema(join(stepRoot, "tck.yaml"), TckSchema);
   const edgeCases: TckEdgeCase[] = Object.entries(tckFile.edgeCases).map(([id, value]) => ({
     id,
@@ -51,6 +57,23 @@ async function loadStep(packRoot: string, stepId: string): Promise<LoadedStep> {
   };
 }
 
+function assertUniqueLoadedSteps(steps: LoadedStep[]): void {
+  const stepIds = new Set<string>();
+  const stepOrders = new Set<number>();
+
+  for (const step of steps) {
+    if (stepIds.has(step.id)) {
+      throw new StudyTutorError(`Duplicate step id ${step.id}`);
+    }
+    stepIds.add(step.id);
+
+    if (stepOrders.has(step.order)) {
+      throw new StudyTutorError(`Duplicate step order ${step.order}`);
+    }
+    stepOrders.add(step.order);
+  }
+}
+
 export async function loadTutorPack(packRoot: string): Promise<LoadedTutorPack> {
   const metadata = await parseYamlWithSchema(join(packRoot, "pack.yaml"), PackSchema);
   const curriculum = await parseYamlWithSchema(join(packRoot, "curriculum.yaml"), CurriculumSchema);
@@ -62,8 +85,10 @@ export async function loadTutorPack(packRoot: string): Promise<LoadedTutorPack> 
     throw new StudyTutorError(`initialStep ${metadata.initialStep} is not listed in an active course`);
   }
 
-  const uniqueStepIds = [...new Set(activeStepIds)];
-  const steps = (await Promise.all(uniqueStepIds.map((stepId) => loadStep(packRoot, stepId))))
+  const loadedSteps = await Promise.all(activeStepIds.map((stepId) => loadStep(packRoot, stepId)));
+  assertUniqueLoadedSteps(loadedSteps);
+
+  const steps = loadedSteps
     .sort((a, b) => a.order - b.order);
   const stepById = new Map(steps.map((step) => [step.id, step]));
 

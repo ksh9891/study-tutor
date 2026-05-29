@@ -1,7 +1,9 @@
 import { z } from "zod";
 
+export const IdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "must match /^[a-z0-9][a-z0-9-]*$/");
+
 export const PackSchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   name: z.string().min(1),
   version: z.string().min(1),
   language: z.literal("java"),
@@ -9,14 +11,14 @@ export const PackSchema = z.object({
     java: z.string().min(1),
     buildTool: z.literal("gradle")
   }),
-  initialStep: z.string().min(1)
+  initialStep: IdSchema
 });
 
 export const CourseSchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   title: z.string().min(1),
   status: z.enum(["active", "coming-soon"]),
-  steps: z.array(z.string().min(1)).optional()
+  steps: z.array(IdSchema).optional()
 });
 
 export const CurriculumSchema = z.object({
@@ -24,13 +26,13 @@ export const CurriculumSchema = z.object({
 });
 
 export const StepSchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   order: z.number().int().positive(),
   title: z.string().min(1)
 });
 
 export const TckSchema = z.object({
-  edgeCases: z.record(z.object({
+  edgeCases: z.record(IdSchema, z.object({
     testClass: z.string().min(1),
     title: z.string().min(1),
     whyImportant: z.string().min(1),
