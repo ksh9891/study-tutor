@@ -87,7 +87,7 @@ coverage/
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm build && pnpm -r typecheck",
-    "test": "vitest run --passWithNoTests",
+    "test": "pnpm build && vitest run --passWithNoTests",
     "test:watch": "vitest",
     "cli": "pnpm --filter @study-tutor/cli dev"
   },
@@ -219,7 +219,7 @@ export default defineWorkspace([
     "build": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json",
     "dev": "pnpm --filter @study-tutor/core build && tsx src/index.ts",
     "typecheck": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "pnpm --filter @study-tutor/core build && vitest run --passWithNoTests"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.2.1",
@@ -300,7 +300,7 @@ pnpm test
 No test files found, exiting with code 0
 ```
 
-Root Vitest uses `--passWithNoTests` so Task 1 can use `pnpm test` as a bootstrap verification gate before Task 2 adds tests.
+Root `pnpm test` builds workspace packages before running Vitest, and Vitest uses `--passWithNoTests` so Task 1 can use it as a bootstrap verification gate before Task 2 adds tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1839,6 +1839,7 @@ git commit -m "feat: install tutor project from bundled pack"
 - Create: `apps/cli/src/commands/install.ts`
 - Create: `apps/cli/src/commands/status.ts`
 - Modify: `apps/cli/src/index.ts`
+- Create: `apps/cli/src/__tests__/install-validation.test.ts`
 - Create: `apps/cli/src/__tests__/status-output.test.ts`
 
 - [ ] **Step 1: Write status output test**
@@ -1866,6 +1867,41 @@ describe("formatStatus", () => {
     expect(output).toContain(".tutor/steps/step-01-entity-annotations/requirements.md");
     expect(output).toContain("src/test/java/learner");
     expect(output).toContain("study-tutor next");
+  });
+});
+```
+
+- [ ] **Step 1b: Write install directory validation test**
+
+`apps/cli/src/__tests__/install-validation.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { validateInstallDirectoryName } from "../commands/install.js";
+
+describe("validateInstallDirectoryName", () => {
+  it("accepts a simple directory name", () => {
+    expect(validateInstallDirectoryName("mini-jpa-study")).toBe(true);
+  });
+
+  it("rejects empty or whitespace-only names", () => {
+    expect(validateInstallDirectoryName("")).toEqual(expect.any(String));
+    expect(validateInstallDirectoryName("   ")).toEqual(expect.any(String));
+  });
+
+  it("rejects absolute paths", () => {
+    expect(validateInstallDirectoryName("/tmp/mini-jpa-study")).toEqual(expect.any(String));
+  });
+
+  it("rejects path traversal segments", () => {
+    expect(validateInstallDirectoryName("..")).toEqual(expect.any(String));
+    expect(validateInstallDirectoryName("../mini-jpa-study")).toEqual(expect.any(String));
+    expect(validateInstallDirectoryName("mini-jpa-study/../other")).toEqual(expect.any(String));
+  });
+
+  it("rejects path separators", () => {
+    expect(validateInstallDirectoryName("parent/child")).toEqual(expect.any(String));
+    expect(validateInstallDirectoryName("parent\\child")).toEqual(expect.any(String));
   });
 });
 ```
@@ -1904,9 +1940,29 @@ export function bundledPackRoot(packId: string): string {
 
 ```ts
 import { input, select } from "@inquirer/prompts";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { installTutorProject, loadTutorPack } from "@study-tutor/core";
 import { bundledPackRoot } from "../paths.js";
+
+export function validateInstallDirectoryName(value: string): true | string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return "디렉터리 이름을 입력하세요.";
+  }
+  if (isAbsolute(trimmed)) {
+    return "상대 디렉터리 이름만 입력하세요.";
+  }
+
+  const pathSegments = trimmed.split(/[\\/]+/);
+  if (pathSegments.includes("..")) {
+    return ".. 경로 세그먼트는 사용할 수 없습니다.";
+  }
+  if (pathSegments.length > 1) {
+    return "새로 만들 단일 디렉터리 이름만 입력하세요.";
+  }
+
+  return true;
+}
 
 export async function runInstallCommand(packId: string): Promise<void> {
   if (packId !== "jpa-tutor-pack") {
@@ -1918,7 +1974,8 @@ export async function runInstallCommand(packId: string): Promise<void> {
 
   const directoryName = await input({
     message: "어디에 설치할까요?",
-    default: "mini-jpa-study"
+    default: "mini-jpa-study",
+    validate: validateInstallDirectoryName
   });
 
   const courseId = await select<string>({
@@ -2051,8 +2108,9 @@ Run:
 
 ```bash
 pnpm --filter @study-tutor/cli test -- src/__tests__/status-output.test.ts
+pnpm --filter @study-tutor/cli test
 pnpm build
-pnpm cli -- --help
+pnpm cli --help
 ```
 
 Expected:
