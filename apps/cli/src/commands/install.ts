@@ -51,6 +51,12 @@ interface ResolvedInstallPack {
   cleanup?: () => Promise<void> | void;
 }
 
+type CourseChoice = {
+  name: string;
+  value: string;
+  disabled?: string;
+};
+
 export function formatInstallSuccess(view: InstallSuccessView): string {
   return [
     "",
@@ -79,15 +85,29 @@ async function withStudyTutorErrorDetails<T>(operation: Promise<T>): Promise<T> 
   });
 }
 
+function hasOption(options: InstallCommandOptions, key: keyof InstallCommandOptions): boolean {
+  return Object.prototype.hasOwnProperty.call(options, key) && options[key] !== undefined;
+}
+
 async function resolveInstallPack(packId: string, options: InstallCommandOptions): Promise<ResolvedInstallPack> {
+  const hasRegistry = hasOption(options, "registry");
+  const hasRegistryUrl = hasOption(options, "registryUrl");
   const registry = options.registry?.trim();
   const registryUrl = options.registryUrl?.trim();
 
-  if (registry && registryUrl) {
+  if (hasRegistry && hasRegistryUrl) {
     throw new Error("Use either --registry or --registry-url, not both");
   }
 
-  if (registry || registryUrl) {
+  if (hasRegistry && !registry) {
+    throw new Error("Missing registry name");
+  }
+
+  if (hasRegistryUrl && !registryUrl) {
+    throw new Error("Missing registry URL");
+  }
+
+  if (hasRegistry || hasRegistryUrl) {
     const url = registry ? await withStudyTutorErrorDetails(resolveRegistryUrl({ name: registry })) : registryUrl;
     if (!url) {
       throw new Error("Missing registry URL");
@@ -117,28 +137,58 @@ async function resolveInstallPack(packId: string, options: InstallCommandOptions
   };
 }
 
-export async function runInstallCommand(packId: string, options: InstallCommandOptions = {}): Promise<void> {
-  const resolvedPack = await resolveInstallPack(packId, options);
-  console.log("JPA Tutor Pack을 설치합니다.\n");
-
-  const directoryName = normalizeInstallDirectoryName(await input({
-    message: "어디에 설치할까요?",
-    default: "mini-jpa-study",
-    validate: validateInstallDirectoryName
+function buildCourseChoices(resolvedPack: ResolvedInstallPack): CourseChoice[] {
+  const choices = resolvedPack.pack.activeCourses.map((course) => ({
+    name: course.title,
+    value: course.id
   }));
 
-  const courseId = await select<string>({
-    message: "어떤 방식으로 학습할까요?",
-    choices: [
-      { name: "Mini Hibernate 구현", value: "mini-hibernate" },
-      { name: "JPA 개념 중심 실습 (coming soon)", value: "jpa-concepts-practice", disabled: "coming soon" },
-      { name: "Spring Data JPA 실무 패턴 (coming soon)", value: "spring-data-jpa-practice", disabled: "coming soon" },
-      { name: "면접 대비 집중 코스 (coming soon)", value: "jpa-interview-focus", disabled: "coming soon" }
-    ]
-  });
+  if (resolvedPack.source.type === "bundled" && resolvedPack.source.path === "packs/jpa-tutor-pack") {
+    choices.push(...resolvedPack.pack.comingSoonCourses.map((course) => ({
+      name: `${course.title} (coming soon)`,
+      value: course.id,
+      disabled: "coming soon"
+    })));
+  }
 
-  const projectRoot = resolve(process.cwd(), directoryName);
+  return choices;
+}
+
+async function selectCourse(resolvedPack: ResolvedInstallPack): Promise<string> {
+  return select<string>({
+    message: "어떤 방식으로 학습할까요?",
+    choices: buildCourseChoices(resolvedPack)
+  });
+}
+
+async function cleanupResolvedPack(resolvedPack: ResolvedInstallPack, primaryError?: unknown): Promise<void> {
   try {
+    await resolvedPack.cleanup?.();
+  } catch (cleanupError) {
+    if (primaryError) {
+      return;
+    }
+
+    throw cleanupError;
+  }
+}
+
+export async function runInstallCommand(packId: string, options: InstallCommandOptions = {}): Promise<void> {
+  const resolvedPack = await resolveInstallPack(packId, options);
+  let primaryError: unknown;
+
+  try {
+    console.log(`${resolvedPack.pack.metadata.name}을 설치합니다.\n`);
+
+    const directoryName = normalizeInstallDirectoryName(await input({
+      message: "어디에 설치할까요?",
+      default: "mini-jpa-study",
+      validate: validateInstallDirectoryName
+    }));
+
+    const courseId = await selectCourse(resolvedPack);
+    const projectRoot = resolve(process.cwd(), directoryName);
+
     await installTutorProject({
       pack: resolvedPack.pack,
       projectRoot,
@@ -146,9 +196,12 @@ export async function runInstallCommand(packId: string, options: InstallCommandO
       source: resolvedPack.source,
       snapshotSourceRoot: resolvedPack.snapshotSourceRoot
     });
-  } finally {
-    await resolvedPack.cleanup?.();
-  }
 
-  console.log(formatInstallSuccess({ directoryName, projectRoot }));
+    console.log(formatInstallSuccess({ directoryName, projectRoot }));
+  } catch (error) {
+    primaryError = error;
+    throw error;
+  } finally {
+    await cleanupResolvedPack(resolvedPack, primaryError);
+  }
 }
