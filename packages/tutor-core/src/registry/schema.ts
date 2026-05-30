@@ -14,5 +14,15 @@ export const RegistryManifestSchema = z.object({
   packs: z.array(RegistryPackSchema)
 });
 
+export const RegistryConfigEntrySchema = z.object({
+  url: z.string().min(1)
+});
+
+export const RegistryConfigSchema = z.object({
+  registries: z.record(IdSchema, RegistryConfigEntrySchema).default({})
+});
+
 export type RegistryPack = z.infer<typeof RegistryPackSchema>;
 export type RegistryManifest = z.infer<typeof RegistryManifestSchema>;
+export type RegistryConfigEntry = z.infer<typeof RegistryConfigEntrySchema>;
+export type RegistryConfig = z.infer<typeof RegistryConfigSchema>;
