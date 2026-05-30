@@ -135,6 +135,16 @@ describe("runRegistryListCommand", () => {
       /Invalid packs.yaml[\s\S]*packs\.0\.id/
     );
   });
+
+  it("includes saved registry config failure details in the rejected message", async () => {
+    vi.mocked(resolveRegistryUrl).mockRejectedValue(
+      new StudyTutorError("Invalid registry config", ["Unexpected end of JSON input"])
+    );
+
+    await expect(runRegistryListCommand({ registry: "official" })).rejects.toThrow(
+      /Invalid registry config[\s\S]*Unexpected end of JSON input/
+    );
+  });
 });
 
 describe("runRegistryAddCommand", () => {

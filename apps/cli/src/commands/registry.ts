@@ -35,6 +35,21 @@ export function formatRegistryList(view: RegistryListView): string {
   return lines.slice(0, -1).join("\n");
 }
 
+function formatStudyTutorError(error: StudyTutorError): Error {
+  const details = error.details.map((detail) => `  - ${detail}`).join("\n");
+  return new Error(details ? `${error.message}\n${details}` : error.message);
+}
+
+async function withStudyTutorErrorDetails<T>(operation: Promise<T>): Promise<T> {
+  return operation.catch((error: unknown) => {
+    if (error instanceof StudyTutorError) {
+      throw formatStudyTutorError(error);
+    }
+
+    throw error;
+  });
+}
+
 export async function runRegistryAddCommand(name: string, url: string): Promise<void> {
   const registryName = name.trim();
   const registryUrl = url.trim();
@@ -53,7 +68,7 @@ async function resolveRegistryListUrl(options: RegistryListOptions): Promise<str
   }
 
   if (registry) {
-    return resolveRegistryUrl({ name: registry });
+    return withStudyTutorErrorDetails(resolveRegistryUrl({ name: registry }));
   }
 
   if (url) {
@@ -66,13 +81,6 @@ async function resolveRegistryListUrl(options: RegistryListOptions): Promise<str
 export async function runRegistryListCommand(options: RegistryListOptions): Promise<void> {
   const url = await resolveRegistryListUrl(options);
 
-  const manifest = await loadRegistryManifest({ url }).catch((error: unknown) => {
-    if (error instanceof StudyTutorError) {
-      const details = error.details.map((detail) => `  - ${detail}`).join("\n");
-      throw new Error(details ? `${error.message}\n${details}` : error.message);
-    }
-
-    throw error;
-  });
+  const manifest = await withStudyTutorErrorDetails(loadRegistryManifest({ url }));
   console.log(formatRegistryList({ packs: manifest.packs }));
 }
