@@ -11,7 +11,10 @@ Study Tutor는 프레임워크 내부를 직접 구현하며 배우는 CLI 기�
 ## MVP 범위
 
 - `study-tutor install <pack-id>` 패키지 바이너리
+- `study-tutor registry add <name> <git-repo-url>` registry URL 저장
 - `study-tutor registry list --url <git-repo-url>` marketplace 조회
+- `study-tutor registry list --registry <name>` marketplace 조회
+- `study-tutor install <pack-id> --registry <name>` registry pack 설치
 - `study-tutor status` 패키지 바이너리
 - `study-tutor test` 패키지 바이너리
 - `study-tutor next` 패키지 바이너리
@@ -21,7 +24,6 @@ Study Tutor는 프레임워크 내부를 직접 구현하며 배우는 CLI 기�
 
 MVP에서 지원하지 않는 것:
 
-- Registry에 등록된 pack 바로 설치
 - GitHub App 리뷰
 - hidden TCK server
 - 웹 UI
@@ -97,15 +99,24 @@ packs:
       - backend
 ```
 
-등록된 pack 목록은 다음 명령으로 조회합니다.
+Registry URL을 이름으로 저장한 뒤 조회하거나 설치할 수 있습니다.
 
 `study-tutor-marketplace.git`은 예시 marketplace repo URL입니다. 사용자가 만든 실제 marketplace Git URL로 바꿔 실행합니다.
 
 ```bash
-node "$CLI" registry list --url https://github.com/ksh9891/study-tutor-marketplace.git
+node "$CLI" registry add official https://github.com/me/study-tutor-marketplace.git
+node "$CLI" registry list --registry official
+node "$CLI" install jpa-tutor-pack --registry official
 ```
 
-MVP에서는 registry 조회만 지원합니다. Registry에 등록된 pack을 바로 설치하는 흐름은 이후 단계에서 연결합니다.
+Registry URL을 저장하지 않고 한 번만 사용할 수도 있습니다.
+
+`study-tutor-marketplace.git`은 예시 marketplace repo URL입니다. 사용자가 만든 실제 marketplace Git URL로 바꿔 실행합니다.
+
+```bash
+node "$CLI" registry list --url https://github.com/me/study-tutor-marketplace.git
+node "$CLI" install jpa-tutor-pack --registry-url https://github.com/me/study-tutor-marketplace.git
+```
 
 ## 학습 흐름
 
