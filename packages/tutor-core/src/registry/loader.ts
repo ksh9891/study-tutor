@@ -18,6 +18,7 @@ export interface LoadRegistryManifestInput {
   url: string;
   tempRoot?: string;
   clone?: CloneRegistry;
+  cleanup?: (path: string) => Promise<void>;
 }
 
 function errorDetails(error: unknown): string[] {
@@ -50,7 +51,7 @@ function formatZodDetails(error: unknown): string[] {
 
 export async function cloneRegistryWithGit(input: CloneRegistryInput): Promise<void> {
   try {
-    await execa("git", ["clone", "--depth", "1", input.url, input.destination], {
+    await execa("git", ["clone", "--depth", "1", "--", input.url, input.destination], {
       all: true
     });
   } catch (error) {
@@ -79,6 +80,7 @@ async function readManifestFile(file: string): Promise<unknown> {
 export async function loadRegistryManifest(input: LoadRegistryManifestInput): Promise<RegistryManifest> {
   const tempRoot = input.tempRoot ?? tmpdir();
   const registryRoot = await mkdtemp(join(tempRoot, "study-tutor-registry-"));
+  let primaryError: unknown;
 
   try {
     try {
@@ -100,7 +102,18 @@ export async function loadRegistryManifest(input: LoadRegistryManifestInput): Pr
       throw new StudyTutorError("Invalid packs.yaml", formatZodDetails(result.error));
     }
     return result.data;
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
-    await rm(registryRoot, { recursive: true, force: true });
+    try {
+      await (input.cleanup ?? ((path) => rm(path, { recursive: true, force: true })))(registryRoot);
+    } catch (cleanupError) {
+      if (primaryError instanceof StudyTutorError) {
+        primaryError.details.push(`Cleanup failed: ${errorDetails(cleanupError)[0]}`);
+      } else if (!primaryError) {
+        throw new StudyTutorError("Failed to cleanup registry temporary directory", errorDetails(cleanupError));
+      }
+    }
   }
 }

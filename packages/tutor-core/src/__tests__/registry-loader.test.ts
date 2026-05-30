@@ -1,10 +1,15 @@
-import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execa } from "execa";
 import { describe, expect, it, vi } from "vitest";
 import { StudyTutorError } from "../errors.js";
-import { loadRegistryManifest } from "../registry/loader.js";
+import { cloneRegistryWithGit, loadRegistryManifest } from "../registry/loader.js";
 import type { CloneRegistry } from "../registry/loader.js";
+
+vi.mock("execa", () => ({
+  execa: vi.fn()
+}));
 
 async function createTempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), "study-tutor-registry-test-root-"));
@@ -18,6 +23,26 @@ function cloneWithManifest(source: string): CloneRegistry {
 }
 
 describe("loadRegistryManifest", () => {
+  it("passes an argv terminator before the registry URL when cloning with git", async () => {
+    vi.mocked(execa).mockResolvedValueOnce({} as Awaited<ReturnType<typeof execa>>);
+
+    await cloneRegistryWithGit({
+      url: "-malformed-url",
+      destination: "/tmp/study-tutor-registry-test"
+    });
+
+    expect(execa).toHaveBeenCalledWith("git", [
+      "clone",
+      "--depth",
+      "1",
+      "--",
+      "-malformed-url",
+      "/tmp/study-tutor-registry-test"
+    ], {
+      all: true
+    });
+  });
+
   it("loads packs.yaml from a cloned registry", async () => {
     const tempRoot = await createTempRoot();
 
@@ -131,6 +156,29 @@ describe("loadRegistryManifest", () => {
     });
     expect(clone).toHaveBeenCalledOnce();
     await expect(readdir(tempRoot)).resolves.toEqual([]);
+  });
+
+  it("preserves clone failures when cleanup also fails", async () => {
+    const tempRoot = await createTempRoot();
+    const clone = vi.fn<CloneRegistry>(async () => {
+      throw new Error("network denied");
+    });
+
+    try {
+      await expect(loadRegistryManifest({
+        url: "https://github.com/ksh9891/study-tutor-marketplace.git",
+        tempRoot,
+        clone,
+        cleanup: async () => {
+          throw new Error("cleanup denied");
+        }
+      })).rejects.toMatchObject({
+        message: "Failed to clone registry",
+        details: ["network denied", "Cleanup failed: cleanup denied"]
+      });
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it("preserves StudyTutorError clone failures", async () => {
