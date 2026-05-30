@@ -3,8 +3,12 @@ import { isAbsolute, resolve } from "node:path";
 import { installTutorProject, loadTutorPack } from "@study-tutor/core";
 import { bundledPackRoot } from "../paths.js";
 
+function normalizeInstallDirectoryName(value: string): string {
+  return value.trim();
+}
+
 export function validateInstallDirectoryName(value: string): true | string {
-  const trimmed = value.trim();
+  const trimmed = normalizeInstallDirectoryName(value);
   if (trimmed.length === 0) {
     return "디렉터리 이름을 입력하세요.";
   }
@@ -49,11 +53,11 @@ export async function runInstallCommand(packId: string): Promise<void> {
   const pack = await loadTutorPack(bundledPackRoot(packId));
   console.log("JPA Tutor Pack을 설치합니다.\n");
 
-  const directoryName = await input({
+  const directoryName = normalizeInstallDirectoryName(await input({
     message: "어디에 설치할까요?",
     default: "mini-jpa-study",
     validate: validateInstallDirectoryName
-  });
+  }));
 
   const courseId = await select<string>({
     message: "어떤 방식으로 학습할까요?",

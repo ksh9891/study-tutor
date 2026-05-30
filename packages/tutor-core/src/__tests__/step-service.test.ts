@@ -11,7 +11,7 @@ function repositoryRootFromTestFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 }
 
-async function createProjectAtStep(stepId = "step-01-entity-annotations") {
+async function createProjectAtStep(stepId = "step-01-entity-annotations", completedSteps: string[] = []) {
   const projectRoot = await mkdtemp(join(tmpdir(), "study-tutor-next-"));
   await mkdir(join(projectRoot, ".tutor", "steps", stepId), { recursive: true });
   await mkdir(join(projectRoot, "src", "test", "java", "learner"), { recursive: true });
@@ -20,7 +20,7 @@ async function createProjectAtStep(stepId = "step-01-entity-annotations") {
     version: "0.1.0",
     course: "mini-hibernate",
     currentStep: stepId,
-    completedSteps: []
+    completedSteps
   });
   return projectRoot;
 }
@@ -152,6 +152,38 @@ describe("advanceToNextStep", () => {
     await expect(readProgressFile(projectRoot)).resolves.toMatchObject({
       currentStep: "step-01-entity-annotations",
       completedSteps: []
+    });
+  });
+
+  it("reports completion without rerunning checks when the final step is already complete", async () => {
+    const finalStepId = "step-03-select-sql-generation";
+    const projectRoot = await createProjectAtStep(finalStepId, [
+      "step-01-entity-annotations",
+      "step-02-entity-metadata",
+      finalStepId
+    ]);
+    const pack = await loadTutorPack(join(repositoryRootFromTestFile(), "packs", "jpa-tutor-pack"));
+
+    const result = await advanceToNextStep({
+      projectRoot,
+      pack,
+      runGradle: async () => {
+        throw new Error("Gradle should not rerun after final completion");
+      },
+      runTck: async () => {
+        throw new Error("TCK should not rerun after final completion");
+      }
+    });
+
+    expect(result.completedStep.id).toBe(finalStepId);
+    expect(result.nextStep).toBeNull();
+    await expect(readProgressFile(projectRoot)).resolves.toMatchObject({
+      currentStep: finalStepId,
+      completedSteps: [
+        "step-01-entity-annotations",
+        "step-02-entity-metadata",
+        finalStepId
+      ]
     });
   });
 });

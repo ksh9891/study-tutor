@@ -52,6 +52,12 @@ function packStepOrThrow(pack: LoadedTutorPack, stepId: string): LoadedStep {
 export async function advanceToNextStep(input: AdvanceInput): Promise<AdvanceResult> {
   const progress = await readProgress(input.projectRoot);
   const currentStep = packStepOrThrow(input.pack, progress.currentStep);
+  const nextStep = nextStepAfter(input.pack, progress.currentStep);
+
+  if (!nextStep && progress.completedSteps.includes(progress.currentStep)) {
+    return { completedStep: currentStep, nextStep: null, tckFailures: [] };
+  }
+
   await assertLearnerTestExists(input.projectRoot);
 
   const gradleResult = await (input.runGradle ?? runGradleTest)(input.projectRoot);
@@ -70,7 +76,6 @@ export async function advanceToNextStep(input: AdvanceInput): Promise<AdvanceRes
     ]);
   }
 
-  const nextStep = nextStepAfter(input.pack, progress.currentStep);
   const completedSteps = progress.completedSteps.includes(progress.currentStep)
     ? progress.completedSteps
     : [...progress.completedSteps, progress.currentStep];

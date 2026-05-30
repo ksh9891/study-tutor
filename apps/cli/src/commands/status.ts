@@ -9,6 +9,7 @@ export interface StatusView {
   currentStepId: string;
   completedCount: number;
   totalCount: number;
+  isComplete?: boolean;
 }
 
 function stepNumber(stepId: string): string {
@@ -16,11 +17,24 @@ function stepNumber(stepId: string): string {
 }
 
 export function formatStatus(view: StatusView): string {
-  return [
+  const summary = [
     `Pack: ${view.pack}@${view.version}`,
     `Course: ${view.courseTitle}`,
     `Current Step: ${stepNumber(view.currentStepId)} - ${view.currentStepTitle}`,
-    `Completed Steps: ${view.completedCount}/${view.totalCount}`,
+    `Completed Steps: ${view.completedCount}/${view.totalCount}`
+  ];
+
+  const isComplete = view.isComplete ?? view.completedCount >= view.totalCount;
+  if (isComplete) {
+    return [
+      ...summary,
+      "",
+      "모든 MVP step을 완료했습니다."
+    ].join("\n");
+  }
+
+  return [
+    ...summary,
     "",
     "Next action:",
     `- .tutor/steps/${view.currentStepId}/requirements.md를 읽으세요.`,
@@ -40,6 +54,12 @@ export async function runStatusCommand(projectRoot = process.cwd()): Promise<voi
     throw new Error("progress.json references a course or step that does not exist in the bundled pack");
   }
 
+  const courseStepIds = course.steps ?? pack.steps.map((candidate) => candidate.id);
+  const finalStepId = courseStepIds.at(-1);
+  const completedStepIds = new Set(progress.completedSteps);
+  const isComplete = progress.completedSteps.length >= courseStepIds.length
+    || (progress.currentStep === finalStepId && completedStepIds.has(progress.currentStep));
+
   console.log(formatStatus({
     pack: progress.pack,
     version: progress.version,
@@ -47,6 +67,7 @@ export async function runStatusCommand(projectRoot = process.cwd()): Promise<voi
     currentStepTitle: step.title,
     currentStepId: step.id,
     completedCount: progress.completedSteps.length,
-    totalCount: course.steps?.length ?? pack.steps.length
+    totalCount: courseStepIds.length,
+    isComplete
   }));
 }

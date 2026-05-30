@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -186,5 +186,32 @@ describe("runCurrentStepTck", () => {
     expect(result.ok).toBe(true);
     await expect(readFile(existingTarget, "utf8")).resolves.toBe("existing project test");
     await expect(exists(join(projectRoot, "src", "test", "java", "tutortck", "step01", "SampleTckTest.java"))).resolves.toBe(false);
+  });
+
+  it("refuses to copy TCK tests through a symlinked target ancestor", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "study-tutor-tck-target-symlink-"));
+    const outside = join(projectRoot, "..", "outside-tck-tests");
+    await mkdir(join(projectRoot, ".tutor", "steps", "step-01", "tck-tests", "tutortck", "step01"), { recursive: true });
+    await mkdir(join(projectRoot, "src"), { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await symlink(outside, join(projectRoot, "src", "test"), "dir");
+    await writeFile(join(projectRoot, ".tutor", "steps", "step-01", "tck-tests", "tutortck", "step01", "SampleTckTest.java"), "package tutortck.step01; class SampleTckTest {}");
+    await writeFile(join(projectRoot, ".tutor", "steps", "step-01", "tck.yaml"), [
+      "edgeCases:",
+      "  sample:",
+      "    testClass: tutortck.step01.SampleTckTest",
+      "    title: Sample edge",
+      "    whyImportant: Sample reason",
+      "    hint: Sample hint"
+    ].join("\n"));
+
+    await expect(runCurrentStepTck({
+      projectRoot,
+      stepId: "step-01",
+      runGradle: async () => {
+        throw new Error("Gradle should not run when the TCK target escapes the project");
+      }
+    })).rejects.toThrow("Refusing to write outside project root");
+    await expect(exists(join(outside, "java", "tutortck", "step01", "SampleTckTest.java"))).resolves.toBe(false);
   });
 });

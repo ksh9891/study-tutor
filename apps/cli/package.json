@@ -5,11 +5,15 @@
   "bin": {
     "study-tutor": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json",
+    "build": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json && node scripts/copy-bundled-pack.mjs",
     "dev": "pnpm --filter @study-tutor/core build && tsx src/index.ts",
+    "prepack": "pnpm build",
     "typecheck": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json --noEmit",
-    "test": "pnpm --filter @study-tutor/core build && vitest run --passWithNoTests"
+    "test": "pnpm build && vitest run --passWithNoTests"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.2.1",

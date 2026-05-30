@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -167,5 +167,37 @@ describe("installStepArtifacts", () => {
 
     await expect(installStepArtifacts(pack, projectRoot, stepId)).rejects.toThrow();
     await expect(exists(stepTarget)).resolves.toBe(false);
+  });
+
+  it("refuses to install public tests through a symlinked test source ancestor", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "study-tutor-step-public-symlink-"));
+    const pack = await loadTutorPack(bundledPackRoot());
+    const projectRoot = join(workspace, "mini-jpa-study");
+    const outside = join(workspace, "outside-tests");
+    const stepId = "step-02-entity-metadata";
+
+    await mkdir(join(projectRoot, "src", "test"), { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await symlink(outside, join(projectRoot, "src", "test", "java"), "dir");
+
+    await expect(installStepArtifacts(pack, projectRoot, stepId)).rejects.toThrow("Refusing to write outside project root");
+    await expect(exists(join(outside, "publictests", "step02", "EntityMetadataSanityTest.java"))).resolves.toBe(false);
+    await expect(exists(join(projectRoot, ".tutor", "steps", stepId, "requirements.md"))).resolves.toBe(false);
+  });
+
+  it("refuses to install step artifacts through a symlinked .tutor ancestor", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "study-tutor-step-tutor-symlink-"));
+    const pack = await loadTutorPack(bundledPackRoot());
+    const projectRoot = join(workspace, "mini-jpa-study");
+    const outside = join(workspace, "outside-tutor");
+    const stepId = "step-02-entity-metadata";
+
+    await mkdir(projectRoot, { recursive: true });
+    await mkdir(join(projectRoot, "src", "test", "java"), { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await symlink(outside, join(projectRoot, ".tutor"), "dir");
+
+    await expect(installStepArtifacts(pack, projectRoot, stepId)).rejects.toThrow("Refusing to write outside project root");
+    await expect(exists(join(outside, "steps", stepId, "requirements.md"))).resolves.toBe(false);
   });
 });

@@ -49,11 +49,9 @@ async function installStepArtifacts(pack: LoadedTutorPack, projectRoot: string, 
   const stepTargetExisted = await pathExists(stepTarget);
   const publicTestsTargetExisted = await pathExists(publicTestsTarget);
 
-  await mkdir(stepTarget, { recursive: true });
   try {
-    await mkdir(publicTestsTarget, { recursive: true });
-    await copyDirectoryWithoutOverwrite(step.root, stepTarget);
-    await copyDirectoryWithoutOverwrite(join(step.root, "public-tests"), publicTestsTarget);
+    await copyDirectoryWithoutOverwrite(step.root, stepTarget, { containmentRoot: projectRoot });
+    await copyDirectoryWithoutOverwrite(join(step.root, "public-tests"), publicTestsTarget, { containmentRoot: projectRoot });
   } catch (error) {
     const cleanupResults = await Promise.allSettled([
       removeCreatedTarget(publicTestsTarget, publicTestsTargetExisted),
@@ -75,7 +73,9 @@ export async function installTutorProject(input: InstallTutorProjectInput): Prom
 
   await mkdir(input.projectRoot, { recursive: true });
   try {
-    await copyDirectoryWithoutOverwrite(join(input.pack.root, "templates", "gradle-project"), input.projectRoot);
+    await copyDirectoryWithoutOverwrite(join(input.pack.root, "templates", "gradle-project"), input.projectRoot, {
+      containmentRoot: input.projectRoot
+    });
     await installStepArtifacts(input.pack, input.projectRoot, input.pack.metadata.initialStep);
     await writeProgress(input.projectRoot, {
       pack: input.pack.metadata.id,

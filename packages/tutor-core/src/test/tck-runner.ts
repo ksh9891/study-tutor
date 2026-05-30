@@ -152,7 +152,7 @@ export async function runCurrentStepTck(input: TckRunInput): Promise<TckRunResul
   let createdDirectories: string[] = [];
 
   try {
-    await copyDirectoryWithoutOverwrite(source, targetRoot);
+    await copyDirectoryWithoutOverwrite(source, targetRoot, { containmentRoot: input.projectRoot });
     copiedFiles = sourcePaths.files.map((file) => join(targetRoot, file));
     createdDirectories = sourcePaths.directories
       .filter((directory) => !existingTargetDirectories.has(directory))

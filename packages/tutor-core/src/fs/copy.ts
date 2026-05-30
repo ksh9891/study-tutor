@@ -1,9 +1,13 @@
 import { constants } from "node:fs";
-import { copyFile, lstat, mkdir, readdir, rmdir, rm } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
+import { copyFile, lstat, mkdir, readdir, realpath, rmdir, rm } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { StudyTutorError } from "../errors.js";
 
 type PathKind = "directory" | "file" | "symlink";
+
+export interface CopyDirectoryOptions {
+  containmentRoot?: string;
+}
 
 function errorCode(error: unknown): string | undefined {
   return typeof error === "object" && error !== null && "code" in error
@@ -17,6 +21,54 @@ function symlinkError(paths: string[]): StudyTutorError {
 
 function overwriteError(paths: string[]): StudyTutorError {
   return new StudyTutorError("Refusing to overwrite existing files", [...paths].sort());
+}
+
+function containmentError(path: string): StudyTutorError {
+  return new StudyTutorError("Refusing to write outside project root", [path]);
+}
+
+function pathIsInsideOrEqual(root: string, candidate: string): boolean {
+  const relativePath = relative(root, candidate);
+  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
+
+async function nearestExistingAncestor(path: string): Promise<string> {
+  let currentPath = resolve(path);
+
+  while (true) {
+    try {
+      await lstat(currentPath);
+      return currentPath;
+    } catch (error) {
+      const code = errorCode(error);
+      if (code !== "ENOENT" && code !== "ENOTDIR") {
+        throw error;
+      }
+
+      const parentPath = dirname(currentPath);
+      if (parentPath === currentPath) {
+        throw error;
+      }
+      currentPath = parentPath;
+    }
+  }
+}
+
+async function assertContainedPath(root: string, path: string): Promise<void> {
+  const absoluteRoot = resolve(root);
+  const absolutePath = resolve(path);
+
+  if (!pathIsInsideOrEqual(absoluteRoot, absolutePath)) {
+    throw containmentError(path);
+  }
+
+  const realRoot = await realpath(absoluteRoot);
+  const existingAncestor = await nearestExistingAncestor(absolutePath);
+  const realAncestor = await realpath(existingAncestor);
+
+  if (!pathIsInsideOrEqual(realRoot, realAncestor)) {
+    throw containmentError(path);
+  }
 }
 
 async function pathKind(path: string): Promise<PathKind | undefined> {
@@ -120,8 +172,31 @@ function addFileConflict(
   }
 }
 
-async function ensureTargetDirectory(target: string, directory: string, createdDirectories: string[]): Promise<void> {
-  for (const directoryPath of targetDirectoryPaths(target, directory)) {
+async function assertTargetPathsContained(source: string, target: string, sourceFiles: string[], containmentRoot?: string): Promise<void> {
+  if (!containmentRoot) {
+    return;
+  }
+
+  await assertContainedPath(containmentRoot, target);
+  for (const sourceFile of sourceFiles) {
+    const targetFile = targetFileFor(source, target, sourceFile);
+    await assertContainedPath(containmentRoot, dirname(targetFile));
+    await assertContainedPath(containmentRoot, targetFile);
+  }
+}
+
+async function ensureContainedTargetDirectory(
+  target: string,
+  directory: string,
+  createdDirectories: string[],
+  containmentRoot?: string
+): Promise<void> {
+  const baseDirectory = containmentRoot ?? target;
+  for (const directoryPath of targetDirectoryPaths(baseDirectory, directory)) {
+    if (containmentRoot) {
+      await assertContainedPath(containmentRoot, directoryPath);
+    }
+
     const directoryKind = await pathKind(directoryPath);
     if (directoryKind === undefined) {
       await mkdir(directoryPath);
@@ -151,8 +226,14 @@ async function rollbackCreatedPaths(createdFiles: string[], createdDirectories: 
   }
 }
 
-export async function copyDirectoryWithoutOverwrite(source: string, target: string): Promise<void> {
+export async function copyDirectoryWithoutOverwrite(
+  source: string,
+  target: string,
+  options: CopyDirectoryOptions = {}
+): Promise<void> {
   const sourceFiles = await listFiles(source);
+  await assertTargetPathsContained(source, target, sourceFiles, options.containmentRoot);
+
   const conflicts = new Set<string>();
   const symlinks = new Set<string>();
   const targetKind = await pathKind(target);
@@ -182,7 +263,10 @@ export async function copyDirectoryWithoutOverwrite(source: string, target: stri
   try {
     for (const sourceFile of sourceFiles) {
       const targetFile = targetFileFor(source, target, sourceFile);
-      await ensureTargetDirectory(target, dirname(targetFile), createdDirectories);
+      await ensureContainedTargetDirectory(target, dirname(targetFile), createdDirectories, options.containmentRoot);
+      if (options.containmentRoot) {
+        await assertContainedPath(options.containmentRoot, targetFile);
+      }
       await copyFile(sourceFile, targetFile, constants.COPYFILE_EXCL);
       createdFiles.push(targetFile);
     }
