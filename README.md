@@ -11,6 +11,7 @@ Study Tutor는 프레임워크 내부를 직접 구현하며 배우는 CLI 기�
 ## MVP 범위
 
 - `study-tutor install <pack-id>` 패키지 바이너리
+- `study-tutor registry list --url <git-repo-url>` marketplace 조회
 - `study-tutor status` 패키지 바이너리
 - `study-tutor test` 패키지 바이너리
 - `study-tutor next` 패키지 바이너리
@@ -20,8 +21,7 @@ Study Tutor는 프레임워크 내부를 직접 구현하며 배우는 CLI 기�
 
 MVP에서 지원하지 않는 것:
 
-- 원격 pack registry
-- pack marketplace
+- Registry에 등록된 pack 바로 설치
 - GitHub App 리뷰
 - hidden TCK server
 - 웹 UI
@@ -77,6 +77,31 @@ node "$CLI" status
 node "$CLI" test
 node "$CLI" next
 ```
+
+## Registry 조회
+
+Study Tutor의 marketplace는 Git repo 하나로 시작합니다. Repo root에는 `packs.yaml`이 있어야 합니다.
+
+```yaml
+packs:
+  - id: jpa-tutor-pack
+    name: JPA Tutor Pack
+    description: Mini Hibernate를 구현하며 JPA를 배우는 pack
+    repo: https://github.com/ksh9891/jpa-tutor-pack.git
+    defaultRef: main
+    tags:
+      - java
+      - jpa
+      - backend
+```
+
+등록된 pack 목록은 다음 명령으로 조회합니다.
+
+```bash
+node "$CLI" registry list --url https://github.com/ksh9891/study-tutor-marketplace.git
+```
+
+MVP에서는 registry 조회만 지원합니다. Registry에 등록된 pack을 바로 설치하는 흐름은 이후 단계에서 연결합니다.
 
 ## 학습 흐름
 
