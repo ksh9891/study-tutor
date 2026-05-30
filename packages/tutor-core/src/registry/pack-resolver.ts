@@ -78,8 +78,16 @@ export async function clonePackRepositoryWithGit(input: ClonePackRepositoryInput
 }
 
 export async function checkoutPackRepositoryWithGit(input: CheckoutPackRepositoryInput): Promise<void> {
+  if (input.ref.startsWith("-")) {
+    throw new StudyTutorError("Invalid pack ref", [input.ref]);
+  }
+
   try {
-    await execa("git", ["checkout", "--detach", input.ref], {
+    await execa("git", ["fetch", "--depth", "1", "origin", "--", input.ref], {
+      cwd: input.repositoryRoot,
+      all: true
+    });
+    await execa("git", ["checkout", "--detach", "FETCH_HEAD"], {
       cwd: input.repositoryRoot,
       all: true
     });

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execa } from "execa";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   checkoutPackRepositoryWithGit,
   clonePackRepositoryWithGit,
@@ -16,6 +16,10 @@ import type {
 vi.mock("execa", () => ({
   execa: vi.fn()
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 async function createTempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), "study-tutor-registry-pack-test-root-"));
@@ -200,6 +204,49 @@ describe("resolveRegistryPack", () => {
     ], {
       all: true
     });
+  });
+
+  it("fetches the requested ref before checking out FETCH_HEAD", async () => {
+    vi.mocked(execa)
+      .mockResolvedValueOnce({} as Awaited<ReturnType<typeof execa>>)
+      .mockResolvedValueOnce({} as Awaited<ReturnType<typeof execa>>);
+
+    await checkoutPackRepositoryWithGit({
+      repositoryRoot: "/tmp/study-tutor-pack-test",
+      ref: "feature/ref-test"
+    });
+
+    expect(execa).toHaveBeenNthCalledWith(1, "git", [
+      "fetch",
+      "--depth",
+      "1",
+      "origin",
+      "--",
+      "feature/ref-test"
+    ], {
+      cwd: "/tmp/study-tutor-pack-test",
+      all: true
+    });
+    expect(execa).toHaveBeenNthCalledWith(2, "git", [
+      "checkout",
+      "--detach",
+      "FETCH_HEAD"
+    ], {
+      cwd: "/tmp/study-tutor-pack-test",
+      all: true
+    });
+  });
+
+  it("rejects option-like refs before running git commands", async () => {
+    await expect(checkoutPackRepositoryWithGit({
+      repositoryRoot: "/tmp/study-tutor-pack-test",
+      ref: "--recurse-submodules"
+    })).rejects.toMatchObject({
+      message: "Invalid pack ref",
+      details: ["--recurse-submodules"]
+    });
+
+    expect(execa).not.toHaveBeenCalled();
   });
 
   it("wraps git checkout failures with command output", async () => {
