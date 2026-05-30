@@ -8,6 +8,7 @@ type PathKind = "directory" | "file" | "symlink";
 
 export interface CopyDirectoryOptions {
   containmentRoot?: string;
+  ignoredDirectoryNames?: string[];
 }
 
 function errorCode(error: unknown): string | undefined {
@@ -40,7 +41,7 @@ async function pathKind(path: string): Promise<PathKind | undefined> {
   }
 }
 
-async function listFiles(root: string): Promise<string[]> {
+async function listFiles(root: string, ignoredDirectoryNames: string[] = []): Promise<string[]> {
   const rootKind = await pathKind(root);
   if (rootKind === "symlink") {
     throw symlinkError([root]);
@@ -56,7 +57,9 @@ async function listFiles(root: string): Promise<string[]> {
       throw symlinkError([fullPath]);
     }
     if (entryKind === "directory") {
-      files.push(...await listFiles(fullPath));
+      if (!ignoredDirectoryNames.includes(entry)) {
+        files.push(...await listFiles(fullPath, ignoredDirectoryNames));
+      }
     } else if (entryKind === "file") {
       files.push(fullPath);
     }
@@ -184,7 +187,7 @@ export async function copyDirectoryWithoutOverwrite(
   target: string,
   options: CopyDirectoryOptions = {}
 ): Promise<void> {
-  const sourceFiles = await listFiles(source);
+  const sourceFiles = await listFiles(source, options.ignoredDirectoryNames);
   await assertTargetPathsContained(source, target, sourceFiles, options.containmentRoot);
 
   const conflicts = new Set<string>();

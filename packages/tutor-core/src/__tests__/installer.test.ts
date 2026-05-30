@@ -6,6 +6,7 @@ import YAML from "yaml";
 import { describe, expect, it } from "vitest";
 import { installStepArtifacts, installTutorProject } from "../pack/installer.js";
 import { loadTutorPack } from "../pack/loader.js";
+import type { PackSource } from "../progress/progress-store.js";
 
 function repositoryRootFromTestFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -24,6 +25,13 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+function bundledSource(): PackSource {
+  return {
+    type: "bundled",
+    path: "packs/jpa-tutor-pack"
+  };
+}
+
 describe("installTutorProject", () => {
   it("creates a new Java study project with step 01 artifacts", async () => {
     const workspace = await mkdtemp(join(tmpdir(), "study-tutor-install-"));
@@ -34,7 +42,7 @@ describe("installTutorProject", () => {
       pack,
       projectRoot,
       courseId: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: bundledSource()
     });
 
     await expect(exists(join(projectRoot, "build.gradle"))).resolves.toBe(true);
@@ -59,8 +67,67 @@ describe("installTutorProject", () => {
       pack: "jpa-tutor-pack",
       version: "0.1.0",
       course: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: {
+        type: "bundled",
+        path: "packs/jpa-tutor-pack"
+      }
     });
+  });
+
+  it("copies a registry pack snapshot into .tutor/pack without .git and writes registry source", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "study-tutor-install-registry-"));
+    const pack = await loadTutorPack(bundledPackRoot());
+    const projectRoot = join(workspace, "mini-jpa-study");
+    const snapshotSourceRoot = join(workspace, "snapshot-source");
+    const source: PackSource = {
+      type: "registry",
+      registryUrl: "https://github.com/me/marketplace.git",
+      packRepo: "https://github.com/me/jpa-tutor-pack.git",
+      ref: "main",
+      localSnapshot: ".tutor/pack"
+    };
+    await mkdir(join(snapshotSourceRoot, ".git"), { recursive: true });
+    await mkdir(join(snapshotSourceRoot, "steps"), { recursive: true });
+    await writeFile(join(snapshotSourceRoot, ".git", "config"), "private git metadata");
+    await writeFile(join(snapshotSourceRoot, "pack.yaml"), "id: jpa-tutor-pack\n");
+    await writeFile(join(snapshotSourceRoot, "steps", "step.yaml"), "id: step\n");
+
+    await installTutorProject({
+      pack,
+      projectRoot,
+      courseId: "mini-hibernate",
+      source,
+      snapshotSourceRoot
+    });
+
+    await expect(exists(join(projectRoot, ".tutor", "pack", "pack.yaml"))).resolves.toBe(true);
+    await expect(exists(join(projectRoot, ".tutor", "pack", "steps", "step.yaml"))).resolves.toBe(true);
+    await expect(exists(join(projectRoot, ".tutor", "pack", ".git", "config"))).resolves.toBe(false);
+
+    const packLock = YAML.parse(await readFile(join(projectRoot, ".tutor", "pack.lock"), "utf8"));
+    expect(packLock).toMatchObject({
+      source
+    });
+  });
+
+  it("requires a snapshot source root for registry installs", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "study-tutor-install-registry-missing-snapshot-"));
+    const pack = await loadTutorPack(bundledPackRoot());
+    const projectRoot = join(workspace, "mini-jpa-study");
+
+    await expect(installTutorProject({
+      pack,
+      projectRoot,
+      courseId: "mini-hibernate",
+      source: {
+        type: "registry",
+        registryUrl: "https://github.com/me/marketplace.git",
+        packRepo: "https://github.com/me/jpa-tutor-pack.git",
+        ref: "main",
+        localSnapshot: ".tutor/pack"
+      }
+    })).rejects.toThrow("Registry installs require a pack snapshot source root");
+    await expect(exists(projectRoot)).resolves.toBe(false);
   });
 
   it("refuses to install into an existing directory", async () => {
@@ -72,7 +139,7 @@ describe("installTutorProject", () => {
       pack,
       projectRoot: join(workspace, "mini-jpa-study"),
       courseId: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: bundledSource()
     })).rejects.toThrow("Install target already exists");
   });
 
@@ -84,7 +151,7 @@ describe("installTutorProject", () => {
       pack,
       projectRoot: join(workspace, "mini-jpa-study"),
       courseId,
-      source: "bundled:packs/jpa-tutor-pack"
+      source: bundledSource()
     })).rejects.toThrow(`Unknown active course ${courseId}`);
   });
 
@@ -104,7 +171,7 @@ describe("installTutorProject", () => {
       pack: brokenPack,
       projectRoot,
       courseId: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: bundledSource()
     })).rejects.toThrow("Unknown step step-99-missing");
     await expect(exists(projectRoot)).resolves.toBe(false);
   });
@@ -120,7 +187,7 @@ describe("installStepArtifacts", () => {
       pack,
       projectRoot,
       courseId: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: bundledSource()
     });
     await installStepArtifacts(pack, projectRoot, "step-02-entity-metadata");
 
@@ -140,7 +207,7 @@ describe("installStepArtifacts", () => {
       pack,
       projectRoot,
       courseId: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: bundledSource()
     });
     await mkdir(publicTestTarget, { recursive: true });
     await writeFile(publicTestConflict, "conflict");

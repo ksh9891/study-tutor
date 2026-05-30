@@ -3,13 +3,15 @@ import { join } from "node:path";
 import { StudyTutorError } from "../errors.js";
 import { copyDirectoryWithoutOverwrite } from "../fs/copy.js";
 import { writePackLock, writeProgress } from "../progress/progress-store.js";
+import type { PackSource } from "../progress/progress-store.js";
 import type { LoadedTutorPack } from "./schema.js";
 
 export interface InstallTutorProjectInput {
   pack: LoadedTutorPack;
   projectRoot: string;
   courseId: string;
-  source: string;
+  source: PackSource;
+  snapshotSourceRoot?: string;
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -65,17 +67,36 @@ async function installStepArtifacts(pack: LoadedTutorPack, projectRoot: string, 
   }
 }
 
+async function installPackSnapshot(input: InstallTutorProjectInput): Promise<void> {
+  if (typeof input.source === "string" || input.source.type !== "registry") {
+    return;
+  }
+
+  if (!input.snapshotSourceRoot) {
+    throw new StudyTutorError("Registry installs require a pack snapshot source root");
+  }
+
+  await copyDirectoryWithoutOverwrite(input.snapshotSourceRoot, join(input.projectRoot, input.source.localSnapshot), {
+    containmentRoot: input.projectRoot,
+    ignoredDirectoryNames: [".git"]
+  });
+}
+
 export async function installTutorProject(input: InstallTutorProjectInput): Promise<void> {
   if (await pathExists(input.projectRoot)) {
     throw new StudyTutorError("Install target already exists", [input.projectRoot]);
   }
   assertActiveCourse(input.pack, input.courseId);
+  if (typeof input.source !== "string" && input.source.type === "registry" && !input.snapshotSourceRoot) {
+    throw new StudyTutorError("Registry installs require a pack snapshot source root");
+  }
 
   await mkdir(input.projectRoot, { recursive: true });
   try {
     await copyDirectoryWithoutOverwrite(join(input.pack.root, "templates", "gradle-project"), input.projectRoot, {
       containmentRoot: input.projectRoot
     });
+    await installPackSnapshot(input);
     await installStepArtifacts(input.pack, input.projectRoot, input.pack.metadata.initialStep);
     await writeProgress(input.projectRoot, {
       pack: input.pack.metadata.id,

@@ -24,6 +24,25 @@ describe("copyDirectoryWithoutOverwrite", () => {
     await expect(readFile(join(target, "nested", "file.txt"), "utf8")).resolves.toBe("hello");
   });
 
+  it("skips ignored directory names while copying nested files", async () => {
+    const root = await mkdtemp(join(tmpdir(), "study-tutor-copy-ignore-"));
+    const source = join(root, "source");
+    const target = join(root, "target");
+    await mkdir(join(source, ".git"), { recursive: true });
+    await mkdir(join(source, "steps"), { recursive: true });
+    await writeFile(join(source, ".git", "config"), "secret");
+    await writeFile(join(source, "pack.yaml"), "pack");
+    await writeFile(join(source, "steps", "step.yaml"), "step");
+
+    await copyDirectoryWithoutOverwrite(source, target, {
+      ignoredDirectoryNames: [".git"]
+    });
+
+    await expect(readFile(join(target, "pack.yaml"), "utf8")).resolves.toBe("pack");
+    await expect(readFile(join(target, "steps", "step.yaml"), "utf8")).resolves.toBe("step");
+    await expect(readFile(join(target, ".git", "config"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("fails before copying when a target file already exists", async () => {
     const root = await mkdtemp(join(tmpdir(), "study-tutor-copy-conflict-"));
     const source = join(root, "source");
