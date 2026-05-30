@@ -91,6 +91,15 @@ describe("packaged CLI", () => {
       currentStep: "step-01-entity-annotations",
       completedSteps: []
     }, null, 2)}\n`);
+    await writeFile(join(studyProject, ".tutor", "pack.lock"), [
+      "pack: jpa-tutor-pack",
+      "version: 0.1.0",
+      "course: mini-hibernate",
+      "source:",
+      "  type: bundled",
+      "  path: packs/jpa-tutor-pack",
+      ""
+    ].join("\n"));
 
     const { stdout: statusOutput } = await execFileAsync(binPath, ["status"], {
       cwd: studyProject,
