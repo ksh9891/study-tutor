@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -185,5 +185,33 @@ describe("advanceToNextStep", () => {
         finalStepId
       ]
     });
+  });
+
+  it("does not write final completion through a symlinked .tutor directory", async () => {
+    const finalStepId = "step-03-select-sql-generation";
+    const projectRoot = await mkdtemp(join(tmpdir(), "study-tutor-next-symlink-"));
+    const outsideTutor = await mkdtemp(join(tmpdir(), "study-tutor-next-outside-"));
+    const outsideProgress = join(outsideTutor, "progress.json");
+    const originalProgress = {
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      currentStep: finalStepId,
+      completedSteps: ["step-01-entity-annotations", "step-02-entity-metadata"]
+    };
+    await mkdir(join(projectRoot, "src", "test", "java", "learner"), { recursive: true });
+    await writeLearnerTest(projectRoot);
+    await writeFile(outsideProgress, `${JSON.stringify(originalProgress, null, 2)}\n`);
+    await symlink(outsideTutor, join(projectRoot, ".tutor"));
+    const pack = await loadTutorPack(join(repositoryRootFromTestFile(), "packs", "jpa-tutor-pack"));
+
+    await expect(advanceToNextStep({
+      projectRoot,
+      pack,
+      runGradle: async () => ({ ok: true, output: "BUILD SUCCESSFUL" }),
+      runTck: async () => ({ ok: true, output: "BUILD SUCCESSFUL", failedEdgeCases: [] })
+    })).rejects.toThrow("Refusing to write outside project root");
+
+    await expect(readFile(outsideProgress, "utf8")).resolves.toBe(`${JSON.stringify(originalProgress, null, 2)}\n`);
   });
 });

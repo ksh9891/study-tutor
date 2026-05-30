@@ -1,7 +1,8 @@
 import { constants } from "node:fs";
-import { copyFile, lstat, mkdir, readdir, realpath, rmdir, rm } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { copyFile, lstat, mkdir, readdir, rmdir, rm } from "node:fs/promises";
+import { dirname, join, relative, sep } from "node:path";
 import { StudyTutorError } from "../errors.js";
+import { assertContainedPath } from "./containment.js";
 
 type PathKind = "directory" | "file" | "symlink";
 
@@ -21,54 +22,6 @@ function symlinkError(paths: string[]): StudyTutorError {
 
 function overwriteError(paths: string[]): StudyTutorError {
   return new StudyTutorError("Refusing to overwrite existing files", [...paths].sort());
-}
-
-function containmentError(path: string): StudyTutorError {
-  return new StudyTutorError("Refusing to write outside project root", [path]);
-}
-
-function pathIsInsideOrEqual(root: string, candidate: string): boolean {
-  const relativePath = relative(root, candidate);
-  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
-}
-
-async function nearestExistingAncestor(path: string): Promise<string> {
-  let currentPath = resolve(path);
-
-  while (true) {
-    try {
-      await lstat(currentPath);
-      return currentPath;
-    } catch (error) {
-      const code = errorCode(error);
-      if (code !== "ENOENT" && code !== "ENOTDIR") {
-        throw error;
-      }
-
-      const parentPath = dirname(currentPath);
-      if (parentPath === currentPath) {
-        throw error;
-      }
-      currentPath = parentPath;
-    }
-  }
-}
-
-async function assertContainedPath(root: string, path: string): Promise<void> {
-  const absoluteRoot = resolve(root);
-  const absolutePath = resolve(path);
-
-  if (!pathIsInsideOrEqual(absoluteRoot, absolutePath)) {
-    throw containmentError(path);
-  }
-
-  const realRoot = await realpath(absoluteRoot);
-  const existingAncestor = await nearestExistingAncestor(absolutePath);
-  const realAncestor = await realpath(existingAncestor);
-
-  if (!pathIsInsideOrEqual(realRoot, realAncestor)) {
-    throw containmentError(path);
-  }
 }
 
 async function pathKind(path: string): Promise<PathKind | undefined> {

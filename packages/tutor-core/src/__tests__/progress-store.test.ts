@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import YAML from "yaml";
@@ -72,6 +72,41 @@ describe("progress-store", () => {
     });
 
     await expect(readFile(join(root, ".tutor", "pack.lock"), "utf8")).resolves.toContain("pack: jpa-tutor-pack");
+  });
+
+  it("refuses to write progress through a symlinked .tutor directory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "study-tutor-progress-symlink-"));
+    const outside = await mkdtemp(join(tmpdir(), "study-tutor-progress-outside-"));
+    const outsideProgress = join(outside, "progress.json");
+    await writeFile(outsideProgress, "outside");
+    await symlink(outside, join(root, ".tutor"));
+
+    await expect(writeProgress(root, {
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      currentStep: "step-03-select-sql-generation",
+      completedSteps: ["step-01-entity-annotations", "step-02-entity-metadata"]
+    })).rejects.toThrow("Refusing to write outside project root");
+
+    await expect(readFile(outsideProgress, "utf8")).resolves.toBe("outside");
+  });
+
+  it("refuses to write pack.lock through a symlinked .tutor directory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "study-tutor-lock-symlink-"));
+    const outside = await mkdtemp(join(tmpdir(), "study-tutor-lock-outside-"));
+    const outsideLock = join(outside, "pack.lock");
+    await writeFile(outsideLock, "outside");
+    await symlink(outside, join(root, ".tutor"));
+
+    await expect(writePackLock(root, {
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      source: "bundled:packs/jpa-tutor-pack"
+    })).rejects.toThrow("Refusing to write outside project root");
+
+    await expect(readFile(outsideLock, "utf8")).resolves.toBe("outside");
   });
 
   it("reports the user-facing message when progress.json is missing", async () => {
