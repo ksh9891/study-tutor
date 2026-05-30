@@ -10,12 +10,11 @@ Study Tutor는 프레임워크 내부를 직접 구현하며 배우는 CLI 기�
 
 ## MVP 범위
 
-- `study-tutor install jpa-tutor-pack` 패키지 바이너리
+- `study-tutor install <pack-id>` 패키지 바이너리
 - `study-tutor status` 패키지 바이너리
 - `study-tutor test` 패키지 바이너리
 - `study-tutor next` 패키지 바이너리
-- 로컬 bundled `jpa-tutor-pack`
-- Mini Hibernate 코스 step 1~3
+- 로컬 bundled pack 실행
 - learner test 파일 작성 강제
 - public sanity test와 public edge-case TCK
 
@@ -32,8 +31,12 @@ MVP에서 지원하지 않는 것:
 
 - Node.js 20 이상
 - pnpm 9 이상
-- Java 21
-- Gradle wrapper는 생성되는 학습 프로젝트에 포함됩니다.
+
+각 pack이 요구하는 언어, 런타임, 빌드 도구는 pack별 README를 확인합니다.
+
+## Pack 문서
+
+각 pack은 자신의 요구 환경, 설치 예시, 학습 흐름을 `packs/<pack-id>/README.md`에 문서화합니다.
 
 ## 설치
 
@@ -47,10 +50,10 @@ CLI="$PWD/apps/cli/dist/index.js"
 
 `study-tutor ...`는 패키지로 링크하거나 설치했을 때 사용할 의도된 바이너리 이름입니다. 현재 로컬 repo 개발에서는 생성된 학습 프로젝트에 이 바이너리가 자동으로 설치되지 않으므로, `pnpm build` 후 빌드된 CLI 파일을 `node`로 실행합니다.
 
-repo root에서 설치 명령을 빠르게 실행할 때는 다음 convenience script를 사용할 수 있습니다. 이 명령은 repo root를 기준으로 학습 프로젝트를 생성합니다.
+repo root에서 설치 명령을 빠르게 실행할 때는 다음 convenience script를 사용할 수 있습니다. 이 명령은 repo root를 기준으로 학습 프로젝트를 생성합니다. 사용 가능한 pack id는 `packs/<pack-id>/README.md`를 확인합니다.
 
 ```bash
-pnpm cli -- install jpa-tutor-pack
+pnpm cli -- install <pack-id>
 ```
 
 repo root에서 한 번만 절대 경로를 저장합니다.
@@ -63,7 +66,7 @@ CLI="$PWD/apps/cli/dist/index.js"
 
 ```bash
 cd /path/to/workspace
-node "$CLI" install jpa-tutor-pack
+node "$CLI" install <pack-id>
 ```
 
 생성된 학습 프로젝트 안에서는 같은 `CLI` 경로로 현재 디렉터리를 기준으로 명령을 실행합니다.
@@ -78,8 +81,8 @@ node "$CLI" next
 ## 학습 흐름
 
 1. `.tutor/steps/<current-step>/requirements.md`를 읽습니다.
-2. `src/test/java/learner` 아래에 직접 테스트를 작성합니다.
-3. `src/main/java/io/tutor/minijpa` 아래에 구현합니다.
+2. pack이 지정한 learner test 위치에 직접 테스트를 작성합니다.
+3. pack이 지정한 위치에 코드를 구현합니다.
 4. `node "$CLI" test`로 learner test와 public sanity test를 실행합니다.
 5. `node "$CLI" next`로 edge-case TCK를 실행하고 다음 step으로 이동합니다.
 
@@ -88,6 +91,6 @@ node "$CLI" next
 ```text
 apps/cli                study-tutor CLI
 packages/tutor-core     pack loading, install, progress, test, next runtime
-packs/jpa-tutor-pack    bundled JPA tutor pack
+packs/*                 bundled tutor packs
 examples/fixtures       smoke test fixtures
 ```
