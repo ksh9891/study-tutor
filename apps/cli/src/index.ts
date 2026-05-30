@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { STUDY_TUTOR_CORE_VERSION } from "@study-tutor/core";
 import { runInstallCommand } from "./commands/install.js";
 import { runNextCommand } from "./commands/next.js";
+import { runRegistryListCommand } from "./commands/registry.js";
 import { runStatusCommand } from "./commands/status.js";
 import { runTestCommand } from "./commands/test.js";
 
@@ -18,6 +19,16 @@ program
   .argument("<pack-id>")
   .description("Install a tutor pack into a new study project")
   .action(runInstallCommand);
+
+const registry = program
+  .command("registry")
+  .description("Browse tutor pack registries");
+
+registry
+  .command("list")
+  .description("List packs from a marketplace registry")
+  .requiredOption("--url <git-repo-url>", "Git repo URL for the marketplace registry")
+  .action((options: { url: string }) => runRegistryListCommand(options));
 
 program
   .command("status")
