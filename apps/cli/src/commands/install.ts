@@ -74,7 +74,10 @@ export async function runInstallCommand(packId: string): Promise<void> {
     pack,
     projectRoot,
     courseId,
-    source: "bundled:packs/jpa-tutor-pack"
+    source: {
+      type: "bundled",
+      path: "packs/jpa-tutor-pack"
+    }
   });
 
   console.log(formatInstallSuccess({ directoryName, projectRoot }));
