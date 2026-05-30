@@ -4,6 +4,7 @@ export { copyDirectoryWithoutOverwrite } from "./fs/copy.js";
 export { installTutorProject } from "./pack/installer.js";
 export { loadTutorPack } from "./pack/loader.js";
 export { readProgress, writePackLock, writeProgress } from "./progress/progress-store.js";
+export { cloneRegistryWithGit, loadRegistryManifest } from "./registry/loader.js";
 export { advanceToNextStep } from "./steps/step-service.js";
 export { runGradleTest } from "./test/gradle-runner.js";
 export { runCurrentStepTck } from "./test/tck-runner.js";
@@ -20,3 +21,5 @@ export type {
   TckEdgeCase
 } from "./pack/schema.js";
 export type { PackLock, Progress } from "./progress/progress-store.js";
+export type { CloneRegistry, CloneRegistryInput, LoadRegistryManifestInput } from "./registry/loader.js";
+export type { RegistryManifest, RegistryPack } from "./registry/schema.js";
