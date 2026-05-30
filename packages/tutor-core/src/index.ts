@@ -3,7 +3,8 @@ export { StudyTutorError } from "./errors.js";
 export { copyDirectoryWithoutOverwrite } from "./fs/copy.js";
 export { installTutorProject } from "./pack/installer.js";
 export { loadTutorPack } from "./pack/loader.js";
-export { readProgress, writePackLock, writeProgress } from "./progress/progress-store.js";
+export { resolveInstalledPackRoot } from "./pack/source-resolver.js";
+export { readPackLock, readProgress, writePackLock, writeProgress } from "./progress/progress-store.js";
 export {
   addRegistry,
   readRegistryConfig,
@@ -19,6 +20,7 @@ export type { AdvanceInput, AdvanceResult } from "./steps/step-service.js";
 export type { GradleRunOptions, GradleRunResult } from "./test/gradle-runner.js";
 export type { TckRunInput, TckRunResult } from "./test/tck-runner.js";
 export type { InstallTutorProjectInput } from "./pack/installer.js";
+export type { ResolveInstalledPackRootOptions } from "./pack/source-resolver.js";
 export type {
   Course,
   LoadedStep,
@@ -27,7 +29,13 @@ export type {
   StepMetadata,
   TckEdgeCase
 } from "./pack/schema.js";
-export type { PackLock, Progress } from "./progress/progress-store.js";
+export type {
+  BundledPackSource,
+  PackLock,
+  PackSource,
+  Progress,
+  RegistryPackSource
+} from "./progress/progress-store.js";
 export type {
   AddRegistryInput,
   RegistryConfigStoreOptions,

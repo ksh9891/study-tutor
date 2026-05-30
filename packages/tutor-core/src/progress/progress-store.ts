@@ -13,14 +13,36 @@ export const ProgressSchema = z.object({
   completedSteps: z.array(z.string().min(1))
 });
 
+export const BundledPackSourceSchema = z.object({
+  type: z.literal("bundled"),
+  path: z.string().min(1)
+});
+
+export const RegistryPackSourceSchema = z.object({
+  type: z.literal("registry"),
+  registryUrl: z.string().min(1),
+  packRepo: z.string().min(1),
+  ref: z.string().min(1),
+  localSnapshot: z.string().min(1)
+});
+
+export const PackSourceSchema = z.union([
+  z.string().min(1),
+  BundledPackSourceSchema,
+  RegistryPackSourceSchema
+]);
+
 export const PackLockSchema = z.object({
   pack: z.string().min(1),
   version: z.string().min(1),
   course: z.string().min(1),
-  source: z.string().min(1)
+  source: PackSourceSchema
 });
 
 export type Progress = z.infer<typeof ProgressSchema>;
+export type BundledPackSource = z.infer<typeof BundledPackSourceSchema>;
+export type RegistryPackSource = z.infer<typeof RegistryPackSourceSchema>;
+export type PackSource = z.infer<typeof PackSourceSchema>;
 export type PackLock = z.infer<typeof PackLockSchema>;
 
 function tutorDir(projectRoot: string): string {
@@ -33,6 +55,15 @@ export async function readProgress(projectRoot: string): Promise<Progress> {
     return ProgressSchema.parse(JSON.parse(await readFile(path, "utf8")));
   } catch (error) {
     throw new StudyTutorError("Could not read .tutor/progress.json. Run this command from a study-tutor project root.", [String(error)]);
+  }
+}
+
+export async function readPackLock(projectRoot: string): Promise<PackLock> {
+  const path = join(tutorDir(projectRoot), "pack.lock");
+  try {
+    return PackLockSchema.parse(YAML.parse(await readFile(path, "utf8")));
+  } catch (error) {
+    throw new StudyTutorError("Could not read .tutor/pack.lock. Run this command from a study-tutor project root.", [String(error)]);
   }
 }
 

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import YAML from "yaml";
 import { describe, expect, it } from "vitest";
-import { readProgress, writePackLock, writeProgress } from "../progress/progress-store.js";
+import { readPackLock, readProgress, writePackLock, writeProgress } from "../progress/progress-store.js";
 
 describe("progress-store", () => {
   it("writes and reads progress.json", async () => {
@@ -44,6 +44,75 @@ describe("progress-store", () => {
       version: "0.1.0",
       course: "mini-hibernate",
       source: "bundled:packs/jpa-tutor-pack"
+    });
+  });
+
+  it("writes pack.lock with bundled source object", async () => {
+    const root = await mkdtemp(join(tmpdir(), "study-tutor-lock-bundled-object-"));
+    await mkdir(join(root, ".tutor"));
+
+    await writePackLock(root, {
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      source: {
+        type: "bundled",
+        path: "packs/jpa-tutor-pack"
+      }
+    });
+
+    const lock = YAML.parse(await readFile(join(root, ".tutor", "pack.lock"), "utf8"));
+    expect(lock.source).toEqual({
+      type: "bundled",
+      path: "packs/jpa-tutor-pack"
+    });
+  });
+
+  it("reads legacy string source as bundled-compatible pack.lock", async () => {
+    const root = await mkdtemp(join(tmpdir(), "study-tutor-lock-legacy-read-"));
+    await mkdir(join(root, ".tutor"), { recursive: true });
+    await writeFile(join(root, ".tutor", "pack.lock"), YAML.stringify({
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      source: "bundled:packs/jpa-tutor-pack"
+    }));
+
+    await expect(readPackLock(root)).resolves.toEqual({
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      source: "bundled:packs/jpa-tutor-pack"
+    });
+  });
+
+  it("reads registry source object from pack.lock", async () => {
+    const root = await mkdtemp(join(tmpdir(), "study-tutor-lock-registry-read-"));
+    await mkdir(join(root, ".tutor"), { recursive: true });
+    await writeFile(join(root, ".tutor", "pack.lock"), YAML.stringify({
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      source: {
+        type: "registry",
+        registryUrl: "https://github.com/me/marketplace.git",
+        packRepo: "https://github.com/me/jpa-tutor-pack.git",
+        ref: "main",
+        localSnapshot: ".tutor/pack"
+      }
+    }));
+
+    await expect(readPackLock(root)).resolves.toEqual({
+      pack: "jpa-tutor-pack",
+      version: "0.1.0",
+      course: "mini-hibernate",
+      source: {
+        type: "registry",
+        registryUrl: "https://github.com/me/marketplace.git",
+        packRepo: "https://github.com/me/jpa-tutor-pack.git",
+        ref: "main",
+        localSnapshot: ".tutor/pack"
+      }
     });
   });
 
