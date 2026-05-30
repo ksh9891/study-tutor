@@ -147,6 +147,41 @@ describe("resolveRegistryPack", () => {
     await expect(readdir(tempRoot)).resolves.toEqual([]);
   });
 
+  it("preserves checkout failures when failure cleanup also fails", async () => {
+    const tempRoot = await createTempRoot();
+    const clone: ClonePackRepository = async ({ destination }) => {
+      await writeMinimalPack(destination);
+    };
+
+    await expect(resolveRegistryPack({
+      registryUrl: "https://github.com/ksh9891/study-tutor-marketplace.git",
+      packId: "jpa-tutor-pack",
+      tempRoot,
+      clone,
+      checkout: async () => {
+        throw new Error("pathspec bad-ref did not match");
+      },
+      cleanup: async () => {
+        throw new Error("cleanup denied");
+      },
+      loadRegistryManifest: async () => ({
+        packs: [
+          {
+            id: "jpa-tutor-pack",
+            name: "JPA Tutor Pack",
+            description: "Learn JPA",
+            repo: "https://github.com/ksh9891/jpa-tutor-pack.git",
+            defaultRef: "bad-ref",
+            tags: []
+          }
+        ]
+      })
+    })).rejects.toMatchObject({
+      message: "Failed to checkout pack ref",
+      details: ["pathspec bad-ref did not match", "Cleanup failed: cleanup denied"]
+    });
+  });
+
   it("passes an argv terminator before the pack repository URL when cloning with git", async () => {
     vi.mocked(execa).mockResolvedValueOnce({} as Awaited<ReturnType<typeof execa>>);
 

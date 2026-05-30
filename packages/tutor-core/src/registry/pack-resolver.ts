@@ -144,7 +144,13 @@ export async function resolveRegistryPack(input: ResolveRegistryPackInput): Prom
     throw error;
   } finally {
     if (primaryError) {
-      await cleanupPackRoot(packRoot, cleanup);
+      try {
+        await cleanupPackRoot(packRoot, cleanup);
+      } catch (cleanupError) {
+        if (primaryError instanceof StudyTutorError) {
+          primaryError.details.push(`Cleanup failed: ${errorDetails(cleanupError)[0]}`);
+        }
+      }
     }
   }
 }
