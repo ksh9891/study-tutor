@@ -13,6 +13,11 @@ export {
   writeRegistryConfig
 } from "./registry/config-store.js";
 export { cloneRegistryWithGit, loadRegistryManifest } from "./registry/loader.js";
+export {
+  checkoutPackRepositoryWithGit,
+  clonePackRepositoryWithGit,
+  resolveRegistryPack
+} from "./registry/pack-resolver.js";
 export { advanceToNextStep } from "./steps/step-service.js";
 export { runGradleTest } from "./test/gradle-runner.js";
 export { runCurrentStepTck } from "./test/tck-runner.js";
@@ -42,6 +47,14 @@ export type {
   ResolveRegistryUrlInput
 } from "./registry/config-store.js";
 export type { CloneRegistry, CloneRegistryInput, LoadRegistryManifestInput } from "./registry/loader.js";
+export type {
+  CheckoutPackRepository,
+  CheckoutPackRepositoryInput,
+  ClonePackRepository,
+  ClonePackRepositoryInput,
+  ResolveRegistryPackInput,
+  ResolvedRegistryPack
+} from "./registry/pack-resolver.js";
 export type {
   RegistryConfig,
   RegistryConfigEntry,
