@@ -82,6 +82,8 @@ node "$CLI" next
 
 Study Tutor의 marketplace는 Git repo 하나로 시작합니다. Repo root에는 `packs.yaml`이 있어야 합니다.
 
+아래 URL은 예시입니다. `repo` 값은 사용자가 만든 실제 pack repo URL로 바꿉니다.
+
 ```yaml
 packs:
   - id: jpa-tutor-pack
@@ -96,6 +98,8 @@ packs:
 ```
 
 등록된 pack 목록은 다음 명령으로 조회합니다.
+
+`study-tutor-marketplace.git`은 예시 marketplace repo URL입니다. 사용자가 만든 실제 marketplace Git URL로 바꿔 실행합니다.
 
 ```bash
 node "$CLI" registry list --url https://github.com/ksh9891/study-tutor-marketplace.git
