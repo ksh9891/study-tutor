@@ -9,6 +9,7 @@ import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
+const registrySnapshotInitialStepTitle = "Registry Snapshot Entity Annotation";
 
 type CliEnvironment = NodeJS.ProcessEnv;
 
@@ -87,6 +88,12 @@ async function commitAll(repositoryRoot: string, message: string) {
   await execa("git", ["commit", "-m", message], { cwd: repositoryRoot, all: true });
 }
 
+async function markPackAsRegistrySnapshot(packRoot: string) {
+  const initialStepMetadata = join(packRoot, "steps", "step-01-entity-annotations", "step.yaml");
+  const metadata = await readFile(initialStepMetadata, "utf8");
+  await writeFile(initialStepMetadata, metadata.replace("title: Entity Annotation 만들기", `title: ${registrySnapshotInitialStepTitle}`));
+}
+
 describe("CLI binary smoke flow", () => {
   it("runs status, test, and next from the generated project cwd", async () => {
     const repositoryRoot = repositoryRootFromTestFile();
@@ -136,6 +143,7 @@ describe("CLI binary smoke flow", () => {
     await mkdir(tempHome, { recursive: true });
     await mkdir(projectWorkspace, { recursive: true });
     await cp(join(repositoryRoot, "packs", "jpa-tutor-pack"), packRepo, { recursive: true });
+    await markPackAsRegistrySnapshot(packRepo);
     await commitAll(packRepo, "Initial pack");
 
     await mkdir(marketplaceRepo, { recursive: true });
@@ -164,20 +172,23 @@ describe("CLI binary smoke flow", () => {
       timeout: 120_000
     });
     expect(await readFile(join(projectRoot, ".tutor", "pack", "pack.yaml"), "utf8")).toContain("id: jpa-tutor-pack");
+    expect(
+      await readFile(join(projectRoot, ".tutor", "pack", "steps", "step-01-entity-annotations", "step.yaml"), "utf8")
+    ).toContain(`title: ${registrySnapshotInitialStepTitle}`);
 
     await cp(join(repositoryRoot, "examples", "fixtures", "step01-solution", "src"), join(projectRoot, "src"), {
       recursive: true
     });
 
     const statusResult = await runCli(repositoryRoot, projectRoot, ["status"], { env });
-    expect(statusResult.stdout).toContain("Current Step: 01 - Entity Annotation 만들기");
+    expect(statusResult.stdout).toContain(`Current Step: 01 - ${registrySnapshotInitialStepTitle}`);
     expect(statusResult.stdout).toContain("Next action:");
 
     const testResult = await runCli(repositoryRoot, projectRoot, ["test"], { env, timeout: 180_000 });
     expect(testResult.stdout).toContain("BUILD SUCCESSFUL");
 
     const nextResult = await runCli(repositoryRoot, projectRoot, ["next"], { env, timeout: 180_000 });
-    expect(nextResult.stdout).toContain("Step completed: Entity Annotation 만들기");
+    expect(nextResult.stdout).toContain(`Step completed: ${registrySnapshotInitialStepTitle}`);
     expect(nextResult.stdout).toContain("Next step created: EntityMetadata 추출하기");
   }, 240_000);
 });
