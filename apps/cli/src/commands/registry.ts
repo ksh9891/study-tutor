@@ -1,4 +1,4 @@
-import { loadRegistryManifest } from "@study-tutor/core";
+import { loadRegistryManifest, StudyTutorError } from "@study-tutor/core";
 import type { RegistryPack } from "@study-tutor/core";
 
 export interface RegistryListOptions {
@@ -40,6 +40,13 @@ export async function runRegistryListCommand(options: RegistryListOptions): Prom
     throw new Error("Missing required option: --url <git-repo-url>");
   }
 
-  const manifest = await loadRegistryManifest({ url });
+  const manifest = await loadRegistryManifest({ url }).catch((error: unknown) => {
+    if (error instanceof StudyTutorError) {
+      const details = error.details.map((detail) => `  - ${detail}`).join("\n");
+      throw new Error(details ? `${error.message}\n${details}` : error.message);
+    }
+
+    throw error;
+  });
   console.log(formatRegistryList({ packs: manifest.packs }));
 }
