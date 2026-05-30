@@ -23,7 +23,10 @@ describe("Phase 1 smoke flow", () => {
       pack,
       projectRoot,
       courseId: "mini-hibernate",
-      source: "bundled:packs/jpa-tutor-pack"
+      source: {
+        type: "bundled",
+        path: "packs/jpa-tutor-pack"
+      }
     });
     await cp(join(repositoryRoot, "examples", "fixtures", "step01-solution", "src"), join(projectRoot, "src"), {
       recursive: true

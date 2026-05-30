@@ -6,11 +6,13 @@ import { writePackLock, writeProgress } from "../progress/progress-store.js";
 import type { PackSource } from "../progress/progress-store.js";
 import type { LoadedTutorPack } from "./schema.js";
 
+export type InstallPackSource = Exclude<PackSource, string>;
+
 export interface InstallTutorProjectInput {
   pack: LoadedTutorPack;
   projectRoot: string;
   courseId: string;
-  source: PackSource;
+  source: InstallPackSource;
   snapshotSourceRoot?: string;
 }
 
@@ -68,7 +70,7 @@ async function installStepArtifacts(pack: LoadedTutorPack, projectRoot: string, 
 }
 
 async function installPackSnapshot(input: InstallTutorProjectInput): Promise<void> {
-  if (typeof input.source === "string" || input.source.type !== "registry") {
+  if (input.source.type !== "registry") {
     return;
   }
 
@@ -87,7 +89,7 @@ export async function installTutorProject(input: InstallTutorProjectInput): Prom
     throw new StudyTutorError("Install target already exists", [input.projectRoot]);
   }
   assertActiveCourse(input.pack, input.courseId);
-  if (typeof input.source !== "string" && input.source.type === "registry" && !input.snapshotSourceRoot) {
+  if (input.source.type === "registry" && !input.snapshotSourceRoot) {
     throw new StudyTutorError("Registry installs require a pack snapshot source root");
   }
 

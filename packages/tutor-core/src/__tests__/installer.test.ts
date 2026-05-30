@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { describe, expect, it } from "vitest";
 import { installStepArtifacts, installTutorProject } from "../pack/installer.js";
+import type { InstallPackSource } from "../pack/installer.js";
 import { loadTutorPack } from "../pack/loader.js";
-import type { PackSource } from "../progress/progress-store.js";
 
 function repositoryRootFromTestFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -25,7 +25,7 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-function bundledSource(): PackSource {
+function bundledSource(): InstallPackSource {
   return {
     type: "bundled",
     path: "packs/jpa-tutor-pack"
@@ -79,7 +79,7 @@ describe("installTutorProject", () => {
     const pack = await loadTutorPack(bundledPackRoot());
     const projectRoot = join(workspace, "mini-jpa-study");
     const snapshotSourceRoot = join(workspace, "snapshot-source");
-    const source: PackSource = {
+    const source: InstallPackSource = {
       type: "registry",
       registryUrl: "https://github.com/me/marketplace.git",
       packRepo: "https://github.com/me/jpa-tutor-pack.git",
