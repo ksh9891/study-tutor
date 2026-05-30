@@ -35,29 +35,49 @@ vi.mock("@study-tutor/core", () => ({
   }
 }));
 
-function packWithCourses(
-  courses = [{ id: "mini-hibernate", title: "Mini Hibernate 구현", status: "active" as const }]
-): LoadedTutorPack {
+function packWithCourses({
+  courses = [{ id: "mini-hibernate", title: "Mini Hibernate 구현", status: "active" as const }],
+  id = "jpa-tutor-pack",
+  name = "JPA Tutor Pack",
+  initialStep = "step-01",
+  initialStepTitle = "Entity Annotation 만들기"
+}: {
+  courses?: LoadedTutorPack["activeCourses"];
+  id?: string;
+  name?: string;
+  initialStep?: string;
+  initialStepTitle?: string;
+} = {}): LoadedTutorPack {
+  const step = {
+    id: initialStep,
+    order: 1,
+    title: initialStepTitle,
+    root: `/tmp/pack/.tutor/steps/${initialStep}`,
+    tck: {
+      edgeCases: []
+    }
+  };
+
   return {
     root: "/tmp/pack",
     metadata: {
-      id: "jpa-tutor-pack",
-      name: "JPA Tutor Pack",
+      id,
+      name,
       version: "0.1.0",
       language: "java",
       runtime: {
         java: "17",
         buildTool: "gradle"
       },
-      initialStep: "step-01"
+      initialStep
     },
     curriculum: {
       courses
     },
     activeCourses: courses,
     comingSoonCourses: [],
-    steps: [],
-    stepById: new Map()
+    steps: [step],
+    stepById: new Map([[initialStep, step]])
   };
 }
 
@@ -249,10 +269,12 @@ describe("runInstallCommand", () => {
 
   it("uses registry pack active courses for course choices", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "study-tutor-install-command-"));
-    const pack = packWithCourses([
-      { id: "fast-track", title: "Fast Track", status: "active" },
-      { id: "deep-dive", title: "Deep Dive", status: "active" }
-    ]);
+    const pack = packWithCourses({
+      courses: [
+        { id: "fast-track", title: "Fast Track", status: "active" },
+        { id: "deep-dive", title: "Deep Dive", status: "active" }
+      ]
+    });
     vi.spyOn(process, "cwd").mockReturnValue(cwd);
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.mocked(input).mockResolvedValue("registry-study");
@@ -310,6 +332,40 @@ describe("runInstallCommand", () => {
     );
   });
 
+  it("uses the registry pack initial step in success output", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "study-tutor-install-command-"));
+    const logs: string[] = [];
+    const pack = packWithCourses({
+      id: "custom-pack",
+      name: "Custom Pack",
+      initialStep: "step-07",
+      initialStepTitle: "Custom Opening Move"
+    });
+    vi.spyOn(process, "cwd").mockReturnValue(cwd);
+    vi.spyOn(console, "log").mockImplementation((message?: unknown) => {
+      logs.push(String(message ?? ""));
+    });
+    vi.mocked(input).mockResolvedValue("custom-study");
+    vi.mocked(resolveRegistryPack).mockResolvedValue({
+      pack,
+      packRoot: "/tmp/pack-root",
+      source: {
+        type: "registry",
+        registryUrl: "https://github.com/me/study-tutor-marketplace.git",
+        packRepo: "https://github.com/me/custom-pack.git",
+        ref: "main",
+        localSnapshot: ".tutor/pack"
+      },
+      cleanup: vi.fn()
+    });
+
+    await runInstallCommand("custom-pack", { registry: "official" });
+
+    const output = logs.join("\n");
+    expect(output).toContain("현재 Step: 07 - Custom Opening Move");
+    expect(output).not.toContain("현재 Step: 01 - Entity Annotation 만들기");
+  });
+
   it("uses the trimmed directory name for install path and success output", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "study-tutor-install-command-"));
     const logs: string[] = [];
@@ -326,6 +382,7 @@ describe("runInstallCommand", () => {
     }));
     const output = logs.join("\n");
     expect(output).toContain(`경로: ${join(cwd, "mini-jpa-study")}`);
+    expect(output).toContain("현재 Step: 01 - Entity Annotation 만들기");
     expect(output).toContain("cd mini-jpa-study");
     expect(output).not.toContain("cd  mini-jpa-study ");
   });

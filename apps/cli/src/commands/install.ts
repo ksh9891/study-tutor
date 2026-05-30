@@ -37,6 +37,7 @@ export function validateInstallDirectoryName(value: string): true | string {
 export interface InstallSuccessView {
   directoryName: string;
   projectRoot: string;
+  currentStepLabel?: string;
 }
 
 export interface InstallCommandOptions {
@@ -62,7 +63,7 @@ export function formatInstallSuccess(view: InstallSuccessView): string {
     "",
     "학습 프로젝트가 생성되었습니다.",
     `경로: ${view.projectRoot}`,
-    "현재 Step: 01 - Entity Annotation 만들기",
+    `현재 Step: ${view.currentStepLabel ?? "01 - Entity Annotation 만들기"}`,
     "",
     "다음 명령:",
     `  cd ${view.directoryName}`,
@@ -154,6 +155,13 @@ function buildCourseChoices(resolvedPack: ResolvedInstallPack): CourseChoice[] {
   return choices;
 }
 
+function formatInitialStepLabel(pack: LoadedTutorPack): string {
+  const initialStepId = pack.metadata.initialStep;
+  const initialStep = pack.stepById.get(initialStepId);
+  const stepNumber = initialStepId.match(/^step-(\d+)$/)?.[1] ?? initialStepId;
+  return `${stepNumber} - ${initialStep?.title ?? initialStepId}`;
+}
+
 async function selectCourse(resolvedPack: ResolvedInstallPack): Promise<string> {
   return select<string>({
     message: "어떤 방식으로 학습할까요?",
@@ -197,7 +205,11 @@ export async function runInstallCommand(packId: string, options: InstallCommandO
       snapshotSourceRoot: resolvedPack.snapshotSourceRoot
     });
 
-    console.log(formatInstallSuccess({ directoryName, projectRoot }));
+    console.log(formatInstallSuccess({
+      directoryName,
+      projectRoot,
+      currentStepLabel: formatInitialStepLabel(resolvedPack.pack)
+    }));
   } catch (error) {
     primaryError = error;
     throw error;
