@@ -1,6 +1,7 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { StudyTutorError } from "../errors.js";
+import { assertContainedPath } from "../fs/containment.js";
 import { readPackLock } from "../progress/progress-store.js";
 
 export interface ResolveInstalledPackRootOptions {
@@ -26,6 +27,7 @@ export async function resolveInstalledPackRoot(
   }
 
   const snapshot = join(projectRoot, packLock.source.localSnapshot);
+  await assertContainedPath(projectRoot, snapshot);
   await assertSnapshotExists(snapshot);
   return snapshot;
 }
