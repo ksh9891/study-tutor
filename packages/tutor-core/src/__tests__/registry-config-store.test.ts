@@ -61,6 +61,20 @@ describe("registry config store", () => {
     })).rejects.toThrow("Registry already exists: official");
   });
 
+  it("treats inherited object property names as normal registry names", async () => {
+    const configRoot = await createConfigRoot();
+
+    await addRegistry({
+      configRoot,
+      name: "constructor",
+      url: "https://github.com/me/constructor.git"
+    });
+
+    await expect(resolveRegistryUrl({ configRoot, name: "constructor" })).resolves.toBe(
+      "https://github.com/me/constructor.git"
+    );
+  });
+
   it("rejects invalid registry names", async () => {
     const configRoot = await createConfigRoot();
 

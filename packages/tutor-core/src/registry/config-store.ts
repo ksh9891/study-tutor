@@ -51,6 +51,10 @@ function parseRegistryName(name: string): string {
   return result.data;
 }
 
+function hasRegistry(config: RegistryConfig, name: string): boolean {
+  return Object.hasOwn(config.registries, name);
+}
+
 export async function readRegistryConfig(
   options: RegistryConfigStoreOptions = {}
 ): Promise<RegistryConfig> {
@@ -87,7 +91,7 @@ export async function addRegistry(input: AddRegistryInput): Promise<RegistryConf
 
   const config = await readRegistryConfig(input);
 
-  if (config.registries[name]) {
+  if (hasRegistry(config, name)) {
     throw new StudyTutorError(`Registry already exists: ${name}`);
   }
 
@@ -106,11 +110,12 @@ export async function addRegistry(input: AddRegistryInput): Promise<RegistryConf
 export async function resolveRegistryUrl(input: ResolveRegistryUrlInput): Promise<string> {
   const name = parseRegistryName(input.name);
   const config = await readRegistryConfig(input);
-  const registry = config.registries[name];
 
-  if (!registry) {
+  if (!hasRegistry(config, name)) {
     throw new StudyTutorError(`Unknown registry: ${name}`);
   }
+
+  const registry = config.registries[name];
 
   return registry.url;
 }
