@@ -6,7 +6,9 @@
     "study-tutor": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/__tests__",
+    "!dist/.tsbuildinfo"
   ],
   "scripts": {
     "build": "pnpm --filter @study-tutor/core build && tsc -p tsconfig.json && node scripts/copy-bundled-pack.mjs",
@@ -17,10 +19,15 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.2.1",
-    "@study-tutor/core": "workspace:*",
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@study-tutor/core": "workspace:*",
     "vitest": "^2.1.8"
   }
 }

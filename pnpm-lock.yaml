@@ -29,13 +29,28 @@ importers:
       '@inquirer/prompts':
         specifier: ^7.2.1
         version: 7.10.1(@types/node@22.19.19)
-      '@study-tutor/core':
-        specifier: workspace:*
-        version: link:../../packages/tutor-core
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      execa:
+        specifier: ^9.5.2
+        version: 9.6.1
+      fast-glob:
+        specifier: ^3.3.2
+        version: 3.3.3
+      fs-extra:
+        specifier: ^11.2.0
+        version: 11.3.5
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
+      '@study-tutor/core':
+        specifier: workspace:*
+        version: link:../../packages/tutor-core
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.19)
