@@ -1,7 +1,8 @@
-import { loadRegistryManifest, StudyTutorError } from "@study-tutor/core";
+import { addRegistry, loadRegistryManifest, resolveRegistryUrl, StudyTutorError } from "@study-tutor/core";
 import type { RegistryPack } from "@study-tutor/core";
 
 export interface RegistryListOptions {
+  registry?: string;
   url?: string;
 }
 
@@ -34,11 +35,36 @@ export function formatRegistryList(view: RegistryListView): string {
   return lines.slice(0, -1).join("\n");
 }
 
-export async function runRegistryListCommand(options: RegistryListOptions): Promise<void> {
+export async function runRegistryAddCommand(name: string, url: string): Promise<void> {
+  const registryName = name.trim();
+  const registryUrl = url.trim();
+
+  await addRegistry({ name: registryName, url: registryUrl });
+
+  console.log([`Registry added: ${registryName}`, `URL: ${registryUrl}`].join("\n"));
+}
+
+async function resolveRegistryListUrl(options: RegistryListOptions): Promise<string> {
+  const registry = options.registry?.trim();
   const url = options.url?.trim();
-  if (!url) {
-    throw new Error("Missing required option: --url <git-repo-url>");
+
+  if (registry && url) {
+    throw new Error("Use either --registry or --url, not both");
   }
+
+  if (registry) {
+    return resolveRegistryUrl({ name: registry });
+  }
+
+  if (url) {
+    return url;
+  }
+
+  throw new Error("Missing required option: --registry <name> or --url <git-repo-url>");
+}
+
+export async function runRegistryListCommand(options: RegistryListOptions): Promise<void> {
+  const url = await resolveRegistryListUrl(options);
 
   const manifest = await loadRegistryManifest({ url }).catch((error: unknown) => {
     if (error instanceof StudyTutorError) {

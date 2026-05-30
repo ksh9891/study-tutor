@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { STUDY_TUTOR_CORE_VERSION } from "@study-tutor/core";
 import { runInstallCommand } from "./commands/install.js";
 import { runNextCommand } from "./commands/next.js";
-import { runRegistryListCommand } from "./commands/registry.js";
+import { runRegistryAddCommand, runRegistryListCommand } from "./commands/registry.js";
 import { runStatusCommand } from "./commands/status.js";
 import { runTestCommand } from "./commands/test.js";
 
@@ -25,10 +25,18 @@ const registry = program
   .description("Browse tutor pack registries");
 
 registry
+  .command("add")
+  .argument("<name>")
+  .argument("<git-repo-url>")
+  .description("Save a marketplace registry URL")
+  .action(runRegistryAddCommand);
+
+registry
   .command("list")
   .description("List packs from a marketplace registry")
-  .requiredOption("--url <git-repo-url>", "Git repo URL for the marketplace registry")
-  .action((options: { url: string }) => runRegistryListCommand(options));
+  .option("--registry <name>", "Saved registry name")
+  .option("--url <git-repo-url>", "Git repo URL for the marketplace registry")
+  .action((options: { registry?: string; url?: string }) => runRegistryListCommand(options));
 
 program
   .command("status")

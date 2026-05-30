@@ -1,9 +1,11 @@
-import { loadRegistryManifest, StudyTutorError } from "@study-tutor/core";
+import { addRegistry, loadRegistryManifest, resolveRegistryUrl, StudyTutorError } from "@study-tutor/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatRegistryList, runRegistryListCommand } from "../commands/registry.js";
+import { formatRegistryList, runRegistryAddCommand, runRegistryListCommand } from "../commands/registry.js";
 
 vi.mock("@study-tutor/core", () => ({
+  addRegistry: vi.fn(),
   loadRegistryManifest: vi.fn(),
+  resolveRegistryUrl: vi.fn(),
   StudyTutorError: class StudyTutorError extends Error {
     constructor(
       message: string,
@@ -80,12 +82,38 @@ describe("runRegistryListCommand", () => {
     expect(logs.join("\n")).toContain("tags: java, jpa");
   });
 
-  it("fails when url is missing", async () => {
-    await expect(runRegistryListCommand({})).rejects.toThrow("Missing required option: --url <git-repo-url>");
+  it("loads the registry from a saved registry name", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.mocked(resolveRegistryUrl).mockResolvedValue("https://github.com/me/study-tutor-marketplace.git");
+    vi.mocked(loadRegistryManifest).mockResolvedValue({ packs: [] });
+
+    await runRegistryListCommand({ registry: "official" });
+
+    expect(resolveRegistryUrl).toHaveBeenCalledWith({ name: "official" });
+    expect(loadRegistryManifest).toHaveBeenCalledWith({
+      url: "https://github.com/me/study-tutor-marketplace.git"
+    });
+  });
+
+  it("fails when registry and url are both provided", async () => {
+    await expect(
+      runRegistryListCommand({
+        registry: "official",
+        url: "https://github.com/ksh9891/study-tutor-marketplace.git"
+      })
+    ).rejects.toThrow("Use either --registry or --url, not both");
+  });
+
+  it("fails when neither registry nor url is provided", async () => {
+    await expect(runRegistryListCommand({})).rejects.toThrow(
+      "Missing required option: --registry <name> or --url <git-repo-url>"
+    );
   });
 
   it("fails when url is blank", async () => {
-    await expect(runRegistryListCommand({ url: "   " })).rejects.toThrow("Missing required option: --url <git-repo-url>");
+    await expect(runRegistryListCommand({ url: "   " })).rejects.toThrow(
+      "Missing required option: --registry <name> or --url <git-repo-url>"
+    );
   });
 
   it("includes clone failure details in the rejected message", async () => {
@@ -106,5 +134,30 @@ describe("runRegistryListCommand", () => {
     await expect(runRegistryListCommand({ url: "https://example.invalid/registry.git" })).rejects.toThrow(
       /Invalid packs.yaml[\s\S]*packs\.0\.id/
     );
+  });
+});
+
+describe("runRegistryAddCommand", () => {
+  it("saves a named registry and prints the saved registry details", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((message?: unknown) => {
+      logs.push(String(message ?? ""));
+    });
+    vi.mocked(addRegistry).mockResolvedValue({
+      registries: {
+        official: {
+          url: "https://github.com/me/study-tutor-marketplace.git"
+        }
+      }
+    });
+
+    await runRegistryAddCommand("official", " https://github.com/me/study-tutor-marketplace.git ");
+
+    expect(addRegistry).toHaveBeenCalledWith({
+      name: "official",
+      url: "https://github.com/me/study-tutor-marketplace.git"
+    });
+    expect(logs.join("\n")).toContain("Registry added: official");
+    expect(logs.join("\n")).toContain("URL: https://github.com/me/study-tutor-marketplace.git");
   });
 });
