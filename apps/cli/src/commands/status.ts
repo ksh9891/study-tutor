@@ -1,4 +1,4 @@
-import { loadTutorPack, readProgress } from "@study-tutor/core";
+import { loadTutorPack, readProgress, resolveInstalledPackRoot } from "@study-tutor/core";
 import { bundledPackRoot } from "../paths.js";
 
 export interface StatusView {
@@ -46,12 +46,13 @@ export function formatStatus(view: StatusView): string {
 
 export async function runStatusCommand(projectRoot = process.cwd()): Promise<void> {
   const progress = await readProgress(projectRoot);
-  const pack = await loadTutorPack(bundledPackRoot(progress.pack));
+  const packRoot = await resolveInstalledPackRoot(projectRoot, { bundledPackRoot });
+  const pack = await loadTutorPack(packRoot);
   const course = pack.activeCourses.find((candidate) => candidate.id === progress.course);
   const step = pack.stepById.get(progress.currentStep);
 
   if (!course || !step) {
-    throw new Error("progress.json references a course or step that does not exist in the bundled pack");
+    throw new Error("progress.json references a course or step that does not exist in the installed pack");
   }
 
   const courseStepIds = course.steps ?? pack.steps.map((candidate) => candidate.id);

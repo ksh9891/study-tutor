@@ -1,4 +1,10 @@
-import { advanceToNextStep, loadTutorPack, readProgress, StudyTutorError } from "@study-tutor/core";
+import {
+  advanceToNextStep,
+  loadTutorPack,
+  readProgress,
+  resolveInstalledPackRoot,
+  StudyTutorError
+} from "@study-tutor/core";
 import { bundledPackRoot } from "../paths.js";
 
 const TCK_FAILURE_MESSAGE = "TCK checks failed";
@@ -16,7 +22,8 @@ function printStudyTutorErrorDetails(error: StudyTutorError): void {
 
 export async function runNextCommand(projectRoot = process.cwd()): Promise<void> {
   const progress = await readProgress(projectRoot);
-  const pack = await loadTutorPack(bundledPackRoot(progress.pack));
+  const packRoot = await resolveInstalledPackRoot(projectRoot, { bundledPackRoot });
+  const pack = await loadTutorPack(packRoot);
 
   try {
     const result = await advanceToNextStep({ projectRoot, pack });

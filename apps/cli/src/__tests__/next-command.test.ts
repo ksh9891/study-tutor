@@ -1,4 +1,10 @@
-import { advanceToNextStep, loadTutorPack, readProgress, StudyTutorError } from "@study-tutor/core";
+import {
+  advanceToNextStep,
+  loadTutorPack,
+  readProgress,
+  resolveInstalledPackRoot,
+  StudyTutorError
+} from "@study-tutor/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runNextCommand } from "../commands/next.js";
 
@@ -14,7 +20,8 @@ vi.mock("@study-tutor/core", () => {
     StudyTutorError: MockStudyTutorError,
     advanceToNextStep: vi.fn(),
     loadTutorPack: vi.fn(),
-    readProgress: vi.fn()
+    readProgress: vi.fn(),
+    resolveInstalledPackRoot: vi.fn()
   };
 });
 
@@ -35,6 +42,7 @@ beforeEach(() => {
     completedSteps: []
   });
   vi.mocked(loadTutorPack).mockResolvedValue({} as Awaited<ReturnType<typeof loadTutorPack>>);
+  vi.mocked(resolveInstalledPackRoot).mockResolvedValue("/project/.tutor/pack");
 });
 
 afterEach(() => {
@@ -42,6 +50,21 @@ afterEach(() => {
 });
 
 describe("runNextCommand", () => {
+  it("loads the tutor pack from the installed pack resolver", async () => {
+    vi.mocked(advanceToNextStep).mockResolvedValue({
+      completedStep: { id: "step-01-entity-annotations", title: "Entity annotations" },
+      nextStep: { id: "step-02-columns", title: "Columns" }
+    } as Awaited<ReturnType<typeof advanceToNextStep>>);
+
+    await runNextCommand("/project");
+
+    expect(resolveInstalledPackRoot).toHaveBeenCalledWith(
+      "/project",
+      expect.objectContaining({ bundledPackRoot: expect.any(Function) })
+    );
+    expect(loadTutorPack).toHaveBeenCalledWith("/project/.tutor/pack");
+  });
+
   it("prints StudyTutorError details when Gradle checks fail", async () => {
     const stderr = captureStderr();
     vi.mocked(advanceToNextStep).mockRejectedValue(new StudyTutorError("Gradle tests failed", [
