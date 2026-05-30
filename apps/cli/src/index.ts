@@ -18,7 +18,9 @@ program
   .command("install")
   .argument("<pack-id>")
   .description("Install a tutor pack into a new study project")
-  .action(runInstallCommand);
+  .option("--registry <name>", "Saved registry name")
+  .option("--registry-url <git-repo-url>", "Marketplace registry Git URL")
+  .action((packId: string, options: { registry?: string; registryUrl?: string }) => runInstallCommand(packId, options));
 
 const registry = program
   .command("registry")

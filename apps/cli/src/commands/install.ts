@@ -1,7 +1,14 @@
 import { input, select } from "@inquirer/prompts";
 import { isAbsolute, resolve } from "node:path";
-import { installTutorProject, loadTutorPack } from "@study-tutor/core";
+import {
+  installTutorProject,
+  loadTutorPack,
+  resolveRegistryPack,
+  resolveRegistryUrl,
+  StudyTutorError
+} from "@study-tutor/core";
 import { bundledPackRoot } from "../paths.js";
+import type { InstallTutorProjectInput, LoadedTutorPack } from "@study-tutor/core";
 
 function normalizeInstallDirectoryName(value: string): string {
   return value.trim();
@@ -32,6 +39,18 @@ export interface InstallSuccessView {
   projectRoot: string;
 }
 
+export interface InstallCommandOptions {
+  registry?: string;
+  registryUrl?: string;
+}
+
+interface ResolvedInstallPack {
+  pack: LoadedTutorPack;
+  source: InstallTutorProjectInput["source"];
+  snapshotSourceRoot?: string;
+  cleanup?: () => Promise<void> | void;
+}
+
 export function formatInstallSuccess(view: InstallSuccessView): string {
   return [
     "",
@@ -45,12 +64,61 @@ export function formatInstallSuccess(view: InstallSuccessView): string {
   ].join("\n");
 }
 
-export async function runInstallCommand(packId: string): Promise<void> {
+function formatStudyTutorError(error: StudyTutorError): Error {
+  const details = error.details.map((detail) => `  - ${detail}`).join("\n");
+  return new Error(details ? `${error.message}\n${details}` : error.message);
+}
+
+async function withStudyTutorErrorDetails<T>(operation: Promise<T>): Promise<T> {
+  return operation.catch((error: unknown) => {
+    if (error instanceof StudyTutorError) {
+      throw formatStudyTutorError(error);
+    }
+
+    throw error;
+  });
+}
+
+async function resolveInstallPack(packId: string, options: InstallCommandOptions): Promise<ResolvedInstallPack> {
+  const registry = options.registry?.trim();
+  const registryUrl = options.registryUrl?.trim();
+
+  if (registry && registryUrl) {
+    throw new Error("Use either --registry or --registry-url, not both");
+  }
+
+  if (registry || registryUrl) {
+    const url = registry ? await withStudyTutorErrorDetails(resolveRegistryUrl({ name: registry })) : registryUrl;
+    if (!url) {
+      throw new Error("Missing registry URL");
+    }
+
+    const resolved = await withStudyTutorErrorDetails(resolveRegistryPack({ registryUrl: url, packId }));
+    return {
+      pack: resolved.pack,
+      source: resolved.source,
+      snapshotSourceRoot: resolved.packRoot,
+      cleanup: resolved.cleanup
+    };
+  }
+
   if (packId !== "jpa-tutor-pack") {
     throw new Error(`Unsupported pack: ${packId}`);
   }
 
-  const pack = await loadTutorPack(bundledPackRoot(packId));
+  return {
+    pack: await loadTutorPack(bundledPackRoot(packId)),
+    source: {
+      type: "bundled",
+      path: "packs/jpa-tutor-pack"
+    },
+    snapshotSourceRoot: undefined,
+    cleanup: undefined
+  };
+}
+
+export async function runInstallCommand(packId: string, options: InstallCommandOptions = {}): Promise<void> {
+  const resolvedPack = await resolveInstallPack(packId, options);
   console.log("JPA Tutor Pack을 설치합니다.\n");
 
   const directoryName = normalizeInstallDirectoryName(await input({
@@ -70,15 +138,17 @@ export async function runInstallCommand(packId: string): Promise<void> {
   });
 
   const projectRoot = resolve(process.cwd(), directoryName);
-  await installTutorProject({
-    pack,
-    projectRoot,
-    courseId,
-    source: {
-      type: "bundled",
-      path: "packs/jpa-tutor-pack"
-    }
-  });
+  try {
+    await installTutorProject({
+      pack: resolvedPack.pack,
+      projectRoot,
+      courseId,
+      source: resolvedPack.source,
+      snapshotSourceRoot: resolvedPack.snapshotSourceRoot
+    });
+  } finally {
+    await resolvedPack.cleanup?.();
+  }
 
   console.log(formatInstallSuccess({ directoryName, projectRoot }));
 }
